@@ -38,29 +38,28 @@
   <script src="js/ga.js"></script>
 
   <script data-jsfiddle="common">
-    function createBigData() {
+    function createSpreadsheetData(rowCount, colCount) {
+      rowCount = typeof rowCount === 'number' ? rowCount : 100;
+      colCount = typeof colCount === 'number' ? colCount : 4;
+
       var rows = []
         , i
         , j;
 
-      for (i = 0; i < 100000; i++) {
+      for (i = 0; i < rowCount; i++) {
         var row = [];
-        for (j = 0; j < 10; j++) {
+        for (j = 0; j < colCount; j++) {
           row.push(Handsontable.helper.spreadsheetColumnLabel(j) + i);
         }
         rows.push(row);
       }
-
       return rows;
     }
   </script>
 </head>
 
 <body>
-<a href="http://github.com/jayrgee/jquery-handsontable">
-  <img style="position: absolute; top: 0; right: 0; border: 0;"
-       src="http://s3.amazonaws.com/github/ribbons/forkme_right_darkblue_121621.png" alt="Fork me on GitHub"/>
-</a>
+<a href="http://github.com/warpech/jquery-handsontable" class="forkMeOnGitHub">Fork me on GitHub</a>
 
 <div id="container">
   <div class="columnLayout">
@@ -103,7 +102,7 @@
       <div class="codeLayout">
         <div class="pad">
           <div class="jsFiddle">
-            <div class="jsFiddleLink" data-runfiddle="example1">Edit in jsFiddle</div>
+            <button class="jsFiddleLink" data-runfiddle="example1">Edit in jsFiddle</button>
           </div>
 
           <script data-jsfiddle="example1">
@@ -113,11 +112,11 @@
              <div id="example1" style="width: 400px; height: 300px; overflow: scroll"></div>
              */
 
-            var myData = createBigData();
+            var myData = createSpreadsheetData(1000, 1000);
 
             $("#example1").handsontable({
               data: myData,
-              colWidths: [65, 47, 47, 47, 47, 47, 47, 47, 47, 47], //can also be a number or a function
+              colWidths: [65, 47, 47, 47, 47, 47, 47, 47, 47, 47],
               rowHeaders: true,
               colHeaders: true,
               fixedRowsTop: 2,

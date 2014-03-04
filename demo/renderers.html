@@ -12,7 +12,8 @@
   <link data-jsfiddle="common" rel="stylesheet" media="screen" href="../dist/jquery.handsontable.full.css">
   <!-- the below is only needed for DateCell (uses jQuery UI Datepicker) -->
   <script data-jsfiddle="common" src="../lib/jquery-ui/js/jquery-ui.custom.min.js"></script>
-  <link data-jsfiddle="common" rel="stylesheet" media="screen" href="../lib/jquery-ui/css/ui-bootstrap/jquery-ui.custom.css">
+  <link data-jsfiddle="common" rel="stylesheet" media="screen"
+        href="../lib/jquery-ui/css/ui-bootstrap/jquery-ui.custom.css">
 
   <!--
   Loading demo dependencies. They are used here only to enhance the examples on this page
@@ -42,10 +43,7 @@
 </head>
 
 <body>
-<a href="http://github.com/warpech/jquery-handsontable">
-  <img style="position: absolute; top: 0; right: 0; border: 0;"
-       src="http://s3.amazonaws.com/github/ribbons/forkme_right_darkblue_121621.png" alt="Fork me on GitHub"/>
-</a>
+<a href="http://github.com/warpech/jquery-handsontable" class="forkMeOnGitHub">Fork me on GitHub</a>
 
 <div id="container">
   <div class="columnLayout">
@@ -109,7 +107,7 @@
       <div class="codeLayout">
         <div class="pad">
           <div class="jsFiddle">
-            <div class="jsFiddleLink" data-runfiddle="example1">Edit in jsFiddle</div>
+            <button class="jsFiddleLink" data-runfiddle="example1">Edit in jsFiddle</button>
           </div>
 
           <script data-jsfiddle="example1">
@@ -121,14 +119,14 @@
             ];
 
             var yellowRenderer = function (instance, td, row, col, prop, value, cellProperties) {
-              Handsontable.TextCell.renderer.apply(this, arguments);
+              Handsontable.renderers.TextRenderer.apply(this, arguments);
               $(td).css({
                 background: 'yellow'
               });
             };
 
             var greenRenderer = function (instance, td, row, col, prop, value, cellProperties) {
-              Handsontable.TextCell.renderer.apply(this, arguments);
+              Handsontable.renderers.TextRenderer.apply(this, arguments);
               $(td).css({
                 background: 'green'
               });
@@ -143,7 +141,8 @@
               columns: [
                 {data: "id", type: 'text'},
                 //'text' is default, you don't actually have to declare it
-                {data: "name", type: {renderer: yellowRenderer}},
+                {data: "name", renderer: yellowRenderer},
+                //use default 'text' cell type but overwrite its renderer with yellowRenderer
                 {data: "isActive", type: 'checkbox'},
                 {data: "date", type: 'date'},
                 {data: "color",
@@ -153,7 +152,7 @@
               ],
               cells: function (row, col, prop) {
                 if (row === 0 && col === 0) {
-                  return {type: {renderer: greenRenderer}};
+                  this.renderer = greenRenderer;
                 }
               }
             });
@@ -176,26 +175,26 @@
           <p>For example writing:</p>
 
         <pre class="javascript"><code>
-        columns: [
+          columns: [
           {
-            type: 'text'
+          type: 'text'
           }
-        ]
+          ]
         </code></pre>
 
           <p>Equals:</p>
 
         <pre class="javascript"><code>
-        columns: [
+          columns: [
           {
-            renderer: Handsontable.TextRenderer,
-            editor: Handsontable.TextEditor
+          renderer: Handsontable.renderers.TextRenderer,
+          editor: Handsontable.editors.TextEditor
           }
-        ]
+          ]
         </code></pre>
 
           This mapping is defined in file <a
-            href="https://github.com/warpech/jquery-handsontable/blob/master/src/cellTypes.js">src/cellTypes.js</a>
+          href="https://github.com/warpech/jquery-handsontable/blob/master/src/cellTypes.js">src/cellTypes.js</a>
         </div>
       </div>
     </div>

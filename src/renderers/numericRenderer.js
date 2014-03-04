@@ -8,17 +8,23 @@
  * @param value Value to render (remember to escape unsafe HTML before inserting to DOM!)
  * @param {Object} cellProperties Cell properites (shared by cell renderer and editor)
  */
-Handsontable.NumericRenderer = function (instance, TD, row, col, prop, value, cellProperties) {
-  if (typeof value === 'number') {
-    if (typeof cellProperties.language !== 'undefined') {
-      numeral.language(cellProperties.language)
+(function (Handsontable) {
+
+  'use strict';
+
+  var NumericRenderer = function (instance, TD, row, col, prop, value, cellProperties) {
+    if (Handsontable.helper.isNumeric(value)) {
+      if (typeof cellProperties.language !== 'undefined') {
+        numeral.language(cellProperties.language)
+      }
+      value = numeral(value).format(cellProperties.format || '0'); //docs: http://numeraljs.com/
+      instance.view.wt.wtDom.addClass(TD, 'htNumeric');
     }
-    instance.view.wt.wtDom.empty(TD); //TODO identify under what circumstances this line can be removed
-    TD.className = 'htNumeric';
-    TD.appendChild(document.createTextNode(numeral(value).format(cellProperties.format || '0'))); //docs: http://numeraljs.com/
-    //this is faster than innerHTML. See: https://github.com/warpech/jquery-handsontable/wiki/JavaScript-&-DOM-performance-tips
-  }
-  else {
-    Handsontable.TextRenderer(instance, TD, row, col, prop, value, cellProperties);
-  }
-};
+    Handsontable.renderers.TextRenderer(instance, TD, row, col, prop, value, cellProperties);
+  };
+
+  Handsontable.NumericRenderer = NumericRenderer; //Left for backward compatibility with versions prior 0.10.0
+  Handsontable.renderers.NumericRenderer = NumericRenderer;
+  Handsontable.renderers.registerRenderer('numeric', NumericRenderer);
+
+})(Handsontable);

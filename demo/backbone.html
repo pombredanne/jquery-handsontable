@@ -16,9 +16,9 @@
   -->
   <link data-jsfiddle="common" rel="stylesheet" media="screen" href="css/samples.css">
   <script src="js/samples.js"></script>
-  <script src="js/backbone/lodash.underscore.js"></script>
-  <script src="js/backbone/backbone.js"></script>
-  <script src="js/backbone/backbone-relational/backbone-relational.js"></script>
+  <script data-jsfiddle="common" src="js/backbone/lodash.underscore.js"></script>
+  <script data-jsfiddle="common" src="js/backbone/backbone.js"></script>
+  <script data-jsfiddle="common" src="js/backbone/backbone-relational/backbone-relational.js"></script>
   <script src="js/highlight/highlight.pack.js"></script>
   <link rel="stylesheet" media="screen" href="js/highlight/styles/github.css">
 
@@ -42,10 +42,7 @@
 </head>
 
 <body>
-<a href="http://github.com/warpech/jquery-handsontable">
-  <img style="position: absolute; top: 0; right: 0; border: 0;"
-       src="http://s3.amazonaws.com/github/ribbons/forkme_right_darkblue_121621.png" alt="Fork me on GitHub"/>
-</a>
+<a href="http://github.com/warpech/jquery-handsontable" class="forkMeOnGitHub">Fork me on GitHub</a>
 
 <div id="container">
   <div class="columnLayout">
@@ -115,7 +112,7 @@
       <div class="codeLayout">
         <div class="pad">
           <div class="jsFiddle">
-            <div class="jsFiddleLink" data-runfiddle="example1">Edit in jsFiddle</div>
+            <button class="jsFiddleLink" data-runfiddle="example1">Edit in jsFiddle</button>
           </div>
 
           <script data-jsfiddle="example1">
@@ -209,8 +206,8 @@
       </div>
     </div>
 
-    <div class="rowLayout nomargin">
-      <div class="descLayout">
+    <div class="rowLayout">
+      <div class="descLayout noMargin">
         <div class="pad"><p>For more examples, head back to the <a href="../index.html">main page</a>.</p>
 
           <p class="small">Handsontable &copy; 2012 Marcin Warpechowski and contributors.<br> Code and documentation

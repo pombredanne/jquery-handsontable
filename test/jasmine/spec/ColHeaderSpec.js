@@ -16,11 +16,7 @@ describe('ColHeader', function () {
     var that = this;
     handsontable();
 
-    waitsFor(nextFrame, 'next frame', 60);
-
-    runs(function () {
-      expect(that.$container.find('thead th').length).toEqual(0);
-    });
+    expect(that.$container.find('thead th').length).toEqual(0);
   });
 
   it('should show col headers if true', function () {
@@ -29,11 +25,7 @@ describe('ColHeader', function () {
       colHeaders: true
     });
 
-    waitsFor(nextFrame, 'next frame', 60);
-
-    runs(function () {
-      expect(that.$container.find('thead th').length).toBeGreaterThan(0);
-    });
+    expect(that.$container.find('thead th').length).toBeGreaterThan(0);
   });
 
   it('should show col headers numbered 1-10 by default', function () {
@@ -44,17 +36,13 @@ describe('ColHeader', function () {
       colHeaders: true
     });
 
-    waitsFor(nextFrame, 'next frame', 60);
-
-    runs(function () {
-      var ths = that.$container.find('thead th');
-      expect(ths.length).toEqual(startCols);
-      expect($.trim(ths.eq(0).text())).toEqual('A');
-      expect($.trim(ths.eq(1).text())).toEqual('B');
-      expect($.trim(ths.eq(2).text())).toEqual('C');
-      expect($.trim(ths.eq(3).text())).toEqual('D');
-      expect($.trim(ths.eq(4).text())).toEqual('E');
-    });
+    var ths = that.$container.find('thead th');
+    expect(ths.length).toEqual(startCols);
+    expect($.trim(ths.eq(0).text())).toEqual('A');
+    expect($.trim(ths.eq(1).text())).toEqual('B');
+    expect($.trim(ths.eq(2).text())).toEqual('C');
+    expect($.trim(ths.eq(3).text())).toEqual('D');
+    expect($.trim(ths.eq(4).text())).toEqual('E');
   });
 
   it('should show col headers with custom label', function () {
@@ -65,17 +53,13 @@ describe('ColHeader', function () {
       colHeaders: ['First', 'Second', 'Third']
     });
 
-    waitsFor(nextFrame, 'next frame', 60);
-
-    runs(function () {
-      var ths = that.$container.find('thead th');
-      expect(ths.length).toEqual(startCols);
-      expect($.trim(ths.eq(0).text())).toEqual('First');
-      expect($.trim(ths.eq(1).text())).toEqual('Second');
-      expect($.trim(ths.eq(2).text())).toEqual('Third');
-      expect($.trim(ths.eq(3).text())).toEqual('D');
-      expect($.trim(ths.eq(4).text())).toEqual('E');
-    });
+    var ths = that.$container.find('thead th');
+    expect(ths.length).toEqual(startCols);
+    expect($.trim(ths.eq(0).text())).toEqual('First');
+    expect($.trim(ths.eq(1).text())).toEqual('Second');
+    expect($.trim(ths.eq(2).text())).toEqual('Third');
+    expect($.trim(ths.eq(3).text())).toEqual('D');
+    expect($.trim(ths.eq(4).text())).toEqual('E');
   });
 
   it('should not show col headers if false', function () {
@@ -84,10 +68,139 @@ describe('ColHeader', function () {
       colHeaders: false
     });
 
-    waitsFor(nextFrame, 'next frame', 60);
+    expect(that.$container.find('th.htColHeader').length).toEqual(0);
+  });
 
-    runs(function () {
-      expect(that.$container.find('th.htColHeader').length).toEqual(0);
+  it('should hide columns headers after updateSettings', function(){
+     var hot  = handsontable({
+       startCols: 5,
+       colHeaders: true
+     });
+
+    expect(this.$container.find('thead th').length).toEqual(5);
+
+    hot.updateSettings({
+      colHeaders: false
     });
+
+    expect(this.$container.find('thead th').length).toEqual(0);
+  });
+
+  it('should show/hide columns headers after updateSettings', function(){
+    var hot  = handsontable({
+      startCols: 5,
+      colHeaders: true
+    });
+
+    expect(this.$container.find('thead th').length).toEqual(5);
+
+    hot.updateSettings({
+      colHeaders: false
+    });
+
+    expect(this.$container.find('thead th').length).toEqual(0);
+
+    hot.updateSettings({
+      colHeaders: true
+    });
+
+    expect(this.$container.find('thead th').length).toEqual(5);
+
+    hot.updateSettings({
+      colHeaders: false
+    });
+
+    expect(this.$container.find('thead th').length).toEqual(0);
+  });
+
+  it('should show columns headers after updateSettings', function(){
+    var hot  = handsontable({
+      startCols: 5,
+      colHeaders: false
+    });
+
+    expect(this.$container.find('thead th').length).toEqual(0);
+
+    hot.updateSettings({
+      colHeaders: true
+    });
+
+    expect(this.$container.find('thead th').length).toEqual(5);
+  });
+
+  it('should show new columns headers after updateSettings', function(){
+    var hot  = handsontable({
+      startCols: 3,
+      colHeaders: ['A', 'B', 'C']
+    });
+
+    expect(this.$container.find('thead th:eq(0)').text()).toEqual('A');
+    expect(this.$container.find('thead th:eq(1)').text()).toEqual('B');
+    expect(this.$container.find('thead th:eq(2)').text()).toEqual('C');
+
+    hot.updateSettings({
+      colHeaders: ['X', 'Y', 'Z']
+    });
+
+    expect(this.$container.find('thead th:eq(0)').text()).toEqual('X');
+    expect(this.$container.find('thead th:eq(1)').text()).toEqual('Y');
+    expect(this.$container.find('thead th:eq(2)').text()).toEqual('Z');
+
+  });
+
+  it('should be possible to define colHeaders with a function', function () {
+    var hot = handsontable({
+      startCols: 2,
+      colHeaders: function (col) {
+        switch (col) {
+          case 0:
+            return 'One';
+
+          case 1:
+            return 'Two';
+        }
+      }
+    });
+
+    expect(this.$container.find('thead th:eq(0)').text()).toEqual('One');
+    expect(this.$container.find('thead th:eq(1)').text()).toEqual('Two');
+  });
+
+  it('should be possible to set HTML in colHeaders', function () {
+    var hot = handsontable({
+      startCols: 2,
+      colHeaders: ['One <input type="checkbox">', 'Two <input type="checkbox">']
+    });
+
+    expect(this.$container.find('thead th:eq(0) input[type=checkbox]').length).toEqual(1);
+    expect(this.$container.find('thead th:eq(1) input[type=checkbox]').length).toEqual(1);
+  });
+
+  it('should be possible to set colHeaders when columns array is present', function () {
+    var hot = handsontable({
+      startCols: 2,
+      colHeaders: ['One', 'Two'],
+      columns: [
+        {type: 'text'},
+        {type: 'text'}
+      ]
+    });
+
+    expect(this.$container.find('thead th:eq(0)').text()).toEqual('One');
+    expect(this.$container.find('thead th:eq(1)').text()).toEqual('Two');
+  });
+
+  it('should be possible to set colHeaders using columns title property', function () {
+    var hot = handsontable({
+      startCols: 2,
+      colHeaders: ['One', 'Two'],
+      columns: [
+        {type: 'text', title: 'Special title'},
+        {type: 'text'}
+      ]
+    });
+
+    expect(this.$container.find('thead th:eq(0)').text()).toEqual('Special title');
+    expect(this.$container.find('thead th:eq(1)').text()).toEqual('Two');
   });
 });

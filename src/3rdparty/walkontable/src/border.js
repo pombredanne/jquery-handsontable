@@ -11,6 +11,7 @@ function WalkontableBorder(instance, settings) {
   style.position = 'absolute';
   style.top = 0;
   style.left = 0;
+//  style.visibility = 'hidden';
 
   for (var i = 0; i < 5; i++) {
     var DIV = document.createElement('DIV');
@@ -27,6 +28,28 @@ function WalkontableBorder(instance, settings) {
   this.bottom = this.main.childNodes[2];
   this.right = this.main.childNodes[3];
 
+
+  /*$(this.top).on(sss, function(event) {
+   event.preventDefault();
+   event.stopImmediatePropagation();
+   $(this).hide();
+   });
+   $(this.left).on(sss, function(event) {
+   event.preventDefault();
+   event.stopImmediatePropagation();
+   $(this).hide();
+   });
+   $(this.bottom).on(sss, function(event) {
+   event.preventDefault();
+   event.stopImmediatePropagation();
+   $(this).hide();
+   });
+   $(this.right).on(sss, function(event) {
+   event.preventDefault();
+   event.stopImmediatePropagation();
+   $(this).hide();
+   });*/
+
   this.topStyle = this.top.style;
   this.leftStyle = this.left.style;
   this.bottomStyle = this.bottom.style;
@@ -40,7 +63,59 @@ function WalkontableBorder(instance, settings) {
   this.cornerStyle.border = '2px solid #FFF';
 
   this.disappear();
-  instance.wtTable.hider.appendChild(this.main);
+  if (!instance.wtTable.bordersHolder) {
+    instance.wtTable.bordersHolder = document.createElement('div');
+    instance.wtTable.bordersHolder.className = 'htBorders';
+    instance.wtTable.hider.appendChild(instance.wtTable.bordersHolder);
+
+  }
+  instance.wtTable.bordersHolder.appendChild(this.main);
+
+  var down = false;
+  var $body = $(document.body);
+
+  $body.on('mousedown.walkontable.' + instance.guid, function () {
+    down = true;
+  });
+
+  $body.on('mouseup.walkontable.' + instance.guid, function () {
+    down = false
+  });
+
+  $(this.main.childNodes).on('mouseenter', function (event) {
+    if (!down || !instance.getSetting('hideBorderOnMouseDownOver')) {
+      return;
+    }
+    event.preventDefault();
+    event.stopImmediatePropagation();
+
+    var bounds = this.getBoundingClientRect();
+
+    var $this = $(this);
+    $this.hide();
+
+    var isOutside = function (event) {
+      if (event.clientY < Math.floor(bounds.top)) {
+        return true;
+      }
+      if (event.clientY > Math.ceil(bounds.top + bounds.height)) {
+        return true;
+      }
+      if (event.clientX < Math.floor(bounds.left)) {
+        return true;
+      }
+      if (event.clientX > Math.ceil(bounds.left + bounds.width)) {
+        return true;
+      }
+    };
+
+    $body.on('mousemove.border.' + instance.guid, function (event) {
+      if (isOutside(event)) {
+        $body.off('mousemove.border.' + instance.guid);
+        $this.show();
+      }
+    });
+  });
 }
 
 /**
@@ -48,7 +123,7 @@ function WalkontableBorder(instance, settings) {
  * @param {Array} corners
  */
 WalkontableBorder.prototype.appear = function (corners) {
-  var isMultiple, $from, $to, fromOffset, toOffset, containerOffset, top, minTop, left, minLeft, height, width;
+  var isMultiple, fromTD, toTD, fromOffset, toOffset, containerOffset, top, minTop, left, minLeft, height, width;
   if (this.disabled) {
     return;
   }
@@ -74,7 +149,7 @@ WalkontableBorder.prototype.appear = function (corners) {
     hideBottom = true;
   }
 
-  ilen = instance.wtTable.countVisibleRows();
+  ilen = instance.wtTable.rowStrategy.countVisible();
 
   for (i = 0; i < ilen; i++) {
     s = instance.wtTable.rowFilter.visibleToSource(i);
@@ -105,7 +180,7 @@ WalkontableBorder.prototype.appear = function (corners) {
       hideRight = true;
     }
 
-    ilen = instance.wtTable.countVisibleColumns();
+    ilen = instance.wtTable.columnStrategy.countVisible();
 
     for (i = 0; i < ilen; i++) {
       s = instance.wtTable.columnFilter.visibleToSource(i);
@@ -126,27 +201,28 @@ WalkontableBorder.prototype.appear = function (corners) {
 
   if (fromRow !== void 0 && fromColumn !== void 0) {
     isMultiple = (fromRow !== toRow || fromColumn !== toColumn);
-    $from = $(instance.wtTable.getCell([fromRow, fromColumn]));
-    $to = isMultiple ? $(instance.wtTable.getCell([toRow, toColumn])) : $from;
-    fromOffset = this.wtDom.offset($from[0]);
-    toOffset = isMultiple ? this.wtDom.offset($to[0]) : fromOffset;
+    fromTD = instance.wtTable.getCell([fromRow, fromColumn]);
+    toTD = isMultiple ? instance.wtTable.getCell([toRow, toColumn]) : fromTD;
+    fromOffset = this.wtDom.offset(fromTD);
+    toOffset = isMultiple ? this.wtDom.offset(toTD) : fromOffset;
     containerOffset = this.wtDom.offset(instance.wtTable.TABLE);
 
     minTop = fromOffset.top;
-    height = toOffset.top + $to.outerHeight() - minTop;
+    height = toOffset.top + this.wtDom.outerHeight(toTD) - minTop;
     minLeft = fromOffset.left;
-    width = toOffset.left + $to.outerWidth() - minLeft;
+    width = toOffset.left + this.wtDom.outerWidth(toTD) - minLeft;
 
     top = minTop - containerOffset.top - 1;
     left = minLeft - containerOffset.left - 1;
 
-    if (parseInt($from.css('border-top-width'), 10) > 0) {
+    var style = this.wtDom.getComputedStyle(fromTD);
+    if (parseInt(style['borderTopWidth'], 10) > 0) {
       top += 1;
-      height -= 1;
+      height = height > 0 ? height - 1 : 0;
     }
-    if (parseInt($from.css('border-left-width'), 10) > 0) {
+    if (parseInt(style['borderLeftWidth'], 10) > 0) {
       left += 1;
-      width -= 1;
+      width = width > 0 ? width - 1 : 0;
     }
   }
   else {

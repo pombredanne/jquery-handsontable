@@ -39,10 +39,7 @@
 </head>
 
 <body>
-<a href="http://github.com/warpech/jquery-handsontable">
-  <img style="position: absolute; top: 0; right: 0; border: 0;"
-       src="http://s3.amazonaws.com/github/ribbons/forkme_right_darkblue_121621.png" alt="Fork me on GitHub"/>
-</a>
+<a href="http://github.com/warpech/jquery-handsontable" class="forkMeOnGitHub">Fork me on GitHub</a>
 
 <div id="container">
   <div class="columnLayout">
@@ -64,7 +61,7 @@
         <div class="pad" data-jsfiddle="example1">
           <h2>Pre-populate new rows from template</h2>
 
-          <p>Below example shows how cell type renderers can be used to present the template values for empty rows.</p>
+          <p>Below example shows how cell renderers can be used to present the template values for empty rows.</p>
 
           <p>When any cell in the empty row is edited, the
             <b>onChange</b> callback fills the row with the template values.</p>
@@ -89,7 +86,7 @@
       <div class="codeLayout">
         <div class="pad">
           <div class="jsFiddle">
-            <div class="jsFiddleLink" data-runfiddle="example1">Edit in jsFiddle</div>
+            <button class="jsFiddleLink" data-runfiddle="example1">Edit in jsFiddle</button>
           </div>
 
           <script data-jsfiddle="example1">
@@ -112,7 +109,7 @@
               else {
                 td.style.color = '';
               }
-              Handsontable.TextCell.renderer.apply(this, args);
+              Handsontable.renderers.TextRenderer.apply(this, args);
             }
 
 
@@ -126,10 +123,10 @@
               contextMenu: true,
               cells: function (row, col, prop) {
                 var cellProperties = {};
-                cellProperties.type = {renderer: defaultValueRenderer}
+                cellProperties.renderer = defaultValueRenderer;
                 return cellProperties;
               },
-              onBeforeChange: function (changes) {
+              beforeChange: function (changes) {
                 var instance = container.data('handsontable')
                     , i
                     , ilen = changes.length

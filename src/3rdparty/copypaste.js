@@ -4,37 +4,73 @@
  * In future we may implement a better driver when better APIs are available
  * @constructor
  */
-function CopyPaste(listenerElement) {
+var CopyPaste = (function () {
+  var instance;
+  return {
+    getInstance: function () {
+      if (!instance) {
+        instance = new CopyPasteClass();
+      } else if (instance.hasBeenDestroyed()){
+        instance.init();
+      }
+
+      instance.refCounter++;
+
+      return instance;
+    }
+  };
+})();
+
+function CopyPasteClass() {
+  this.refCounter = 0;
+  this.init();
+}
+
+CopyPasteClass.prototype.init = function () {
   var that = this
-    , style;
-  listenerElement = listenerElement || document.body;
+    , style
+    , parent;
 
-  this.elDiv = document.createElement('DIV');
-  style = this.elDiv.style;
-  style.position = 'fixed';
-  style.top = 0;
-  style.left = 0;
-  listenerElement.appendChild(this.elDiv);
+  this.copyCallbacks = [];
+  this.cutCallbacks = [];
+  this.pasteCallbacks = [];
 
-  this.elTextarea = document.createElement('TEXTAREA');
-  this.elTextarea.className = 'copyPaste';
-  style = this.elTextarea.style;
-  style.width = '1px';
-  style.height = '1px';
-  this.elDiv.appendChild(this.elTextarea);
+  this.listenerElement = document.documentElement;
+  parent = document.body;
 
-  if (typeof style.opacity !== 'undefined') {
-    style.opacity = 0;
+  if (document.getElementById('CopyPasteDiv')) {
+    this.elDiv = document.getElementById('CopyPasteDiv');
+    this.elTextarea = this.elDiv.firstChild;
   }
   else {
-    /*@cc_on @if (@_jscript)
-     if(typeof style.filter === 'string') {
-     style.filter = 'alpha(opacity=0)';
-     }
-     @end @*/
+    this.elDiv = document.createElement('DIV');
+    this.elDiv.id = 'CopyPasteDiv';
+    style = this.elDiv.style;
+    style.position = 'fixed';
+    style.top = 0;
+    style.left = 0;
+    parent.appendChild(this.elDiv);
+
+    this.elTextarea = document.createElement('TEXTAREA');
+    this.elTextarea.className = 'copyPaste';
+    style = this.elTextarea.style;
+    style.width = '1px';
+    style.height = '1px';
+    this.elDiv.appendChild(this.elTextarea);
+
+    if (typeof style.opacity !== 'undefined') {
+      style.opacity = 0;
+    }
+    else {
+      /*@cc_on @if (@_jscript)
+       if(typeof style.filter === 'string') {
+       style.filter = 'alpha(opacity=0)';
+       }
+       @end @*/
+    }
   }
 
-  this._bindEvent(listenerElement, 'keydown', function (event) {
+  this.keydownListener = function (event) {
     var isCtrlDown = false;
     if (event.metaKey) { //mac
       isCtrlDown = true;
@@ -44,6 +80,10 @@ function CopyPaste(listenerElement) {
     }
 
     if (isCtrlDown) {
+      if (document.activeElement !== that.elTextarea && (that.getSelectionText() != '' || ['INPUT', 'SELECT', 'TEXTAREA'].indexOf(document.activeElement.nodeName) != -1)) {
+        return; //this is needed by fragmentSelection in Handsontable. Ignore copypaste.js behavior if fragment of cell text is selected
+      }
+
       that.selectNodeText(that.elTextarea);
       setTimeout(function () {
         that.selectNodeText(that.elTextarea);
@@ -68,69 +108,136 @@ function CopyPaste(listenerElement) {
         }, 0);
       }
     }
-  });
-}
+  }
+
+  this._bindEvent(this.listenerElement, 'keydown', this.keydownListener);
+};
 
 //http://jsperf.com/textara-selection
 //http://stackoverflow.com/questions/1502385/how-can-i-make-this-code-work-in-ie
-CopyPaste.prototype.selectNodeText = function (el) {
+CopyPasteClass.prototype.selectNodeText = function (el) {
   el.select();
 };
 
-CopyPaste.prototype.copyable = function (str) {
+//http://stackoverflow.com/questions/5379120/get-the-highlighted-selected-text
+CopyPasteClass.prototype.getSelectionText = function () {
+  var text = "";
+  if (window.getSelection) {
+    text = window.getSelection().toString();
+  } else if (document.selection && document.selection.type != "Control") {
+    text = document.selection.createRange().text;
+  }
+  return text;
+};
+
+CopyPasteClass.prototype.copyable = function (str) {
   if (typeof str !== 'string' && str.toString === void 0) {
     throw new Error('copyable requires string parameter');
   }
   this.elTextarea.value = str;
 };
 
-CopyPaste.prototype.onCopy = function (fn) {
-  this.copyCallback = fn;
+/*CopyPasteClass.prototype.onCopy = function (fn) {
+  this.copyCallbacks.push(fn);
+};*/
+
+CopyPasteClass.prototype.onCut = function (fn) {
+  this.cutCallbacks.push(fn);
 };
 
-CopyPaste.prototype.onCut = function (fn) {
-  this.cutCallback = fn;
+CopyPasteClass.prototype.onPaste = function (fn) {
+  this.pasteCallbacks.push(fn);
 };
 
-CopyPaste.prototype.onPaste = function (fn) {
-  this.pasteCallback = fn;
+CopyPasteClass.prototype.removeCallback = function (fn) {
+  var i, ilen;
+  for (i = 0, ilen = this.copyCallbacks.length; i < ilen; i++) {
+    if (this.copyCallbacks[i] === fn) {
+      this.copyCallbacks.splice(i, 1);
+      return true;
+    }
+  }
+  for (i = 0, ilen = this.cutCallbacks.length; i < ilen; i++) {
+    if (this.cutCallbacks[i] === fn) {
+      this.cutCallbacks.splice(i, 1);
+      return true;
+    }
+  }
+  for (i = 0, ilen = this.pasteCallbacks.length; i < ilen; i++) {
+    if (this.pasteCallbacks[i] === fn) {
+      this.pasteCallbacks.splice(i, 1);
+      return true;
+    }
+  }
+  return false;
 };
 
-CopyPaste.prototype.triggerCut = function (event) {
+CopyPasteClass.prototype.triggerCut = function (event) {
   var that = this;
-  if (that.cutCallback) {
+  if (that.cutCallbacks) {
     setTimeout(function () {
-      that.cutCallback(event);
-    }, 0);
+      for (var i = 0, ilen = that.cutCallbacks.length; i < ilen; i++) {
+        that.cutCallbacks[i](event);
+      }
+    }, 50);
   }
 };
 
-CopyPaste.prototype.triggerPaste = function (event, str) {
+CopyPasteClass.prototype.triggerPaste = function (event, str) {
   var that = this;
-  if (that.pasteCallback) {
+  if (that.pasteCallbacks) {
     setTimeout(function () {
-      that.pasteCallback((str || that.elTextarea.value).replace(/\n$/, ''), event); //remove trailing newline
-    }, 0);
+      var val = (str || that.elTextarea.value).replace(/\n$/, ''); //remove trailing newline
+      for (var i = 0, ilen = that.pasteCallbacks.length; i < ilen; i++) {
+        that.pasteCallbacks[i](val, event);
+      }
+    }, 50);
   }
 };
 
-//http://net.tutsplus.com/tutorials/javascript-ajax/javascript-from-null-cross-browser-event-binding/
-//http://stackoverflow.com/questions/4643249/cross-browser-event-object-normalization
-CopyPaste.prototype._bindEvent = (function () {
-  if (document.addEventListener) {
+CopyPasteClass.prototype.destroy = function () {
+
+  if(!this.hasBeenDestroyed() && --this.refCounter == 0){
+    if (this.elDiv && this.elDiv.parentNode) {
+      this.elDiv.parentNode.removeChild(this.elDiv);
+    }
+
+    this._unbindEvent(this.listenerElement, 'keydown', this.keydownListener);
+
+  }
+
+};
+
+CopyPasteClass.prototype.hasBeenDestroyed = function () {
+  return !this.refCounter;
+};
+
+//old version used this:
+// - http://net.tutsplus.com/tutorials/javascript-ajax/javascript-from-null-cross-browser-event-binding/
+// - http://stackoverflow.com/questions/4643249/cross-browser-event-object-normalization
+//but that cannot work with jQuery.trigger
+CopyPasteClass.prototype._bindEvent = (function () {
+  if (window.jQuery) { //if jQuery exists, use jQuery event (for compatibility with $.trigger and $.triggerHandler, which can only trigger jQuery events - and we use that in tests)
     return function (elem, type, cb) {
-      elem.addEventListener(type, cb, false);
+      $(elem).on(type + '.copypaste', cb);
     };
   }
   else {
     return function (elem, type, cb) {
-      elem.attachEvent('on' + type, function () {
-        var e = window['event'];
-        e.target = e.srcElement;
-        e.relatedTarget = e.relatedTarget || e.type == 'mouseover' ? e.fromElement : e.toElement;
-        if (e.target.nodeType === 3) e.target = e.target.parentNode; //Safari bug
-        return cb.call(elem, e)
-      });
+      elem.addEventListener(type, cb, false); //sorry, IE8 will only work with jQuery
+    };
+  }
+})();
+
+CopyPasteClass.prototype._unbindEvent = (function () {
+  if (window.jQuery) { //if jQuery exists, use jQuery event (for compatibility with $.trigger and $.triggerHandler, which can only trigger jQuery events - and we use that in tests)
+    return function (elem, type, cb) {
+      $(elem).off(type + '.copypaste', cb);
+    };
+  }
+  else {
+    return function (elem, type, cb) {
+      elem.removeEventListener(type, cb, false); //sorry, IE8 will only work with jQuery
     };
   }
 })();

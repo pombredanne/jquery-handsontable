@@ -1,17 +1,6 @@
 function WalkontableScroll(instance) {
   this.instance = instance;
-  this.wtScrollbarV = new WalkontableVerticalScrollbar(instance);
-  this.wtScrollbarH = new WalkontableHorizontalScrollbar(instance);
 }
-
-WalkontableScroll.prototype.refreshScrollbars = function () {
-  this.wtScrollbarH.readSettings();
-  this.wtScrollbarV.readSettings();
-  this.wtScrollbarH.prepare();
-  this.wtScrollbarV.prepare();
-  this.wtScrollbarH.refresh();
-  this.wtScrollbarV.refresh();
-};
 
 WalkontableScroll.prototype.scrollVertical = function (delta) {
   if (!this.instance.drawn) {
@@ -19,34 +8,30 @@ WalkontableScroll.prototype.scrollVertical = function (delta) {
   }
 
   var instance = this.instance
+    , newOffset
     , offset = instance.getSetting('offsetRow')
     , fixedCount = instance.getSetting('fixedRowsTop')
     , total = instance.getSetting('totalRows')
-    , maxSize = (instance.getSetting('height') || Infinity); //Infinity is needed, otherwise you could scroll a table that did not have height specified
+    , maxSize = instance.wtViewport.getViewportHeight();
 
-  if(maxSize !== Infinity) {
-    var TD = instance.wtTable.TBODY.firstChild.firstChild;
-    if (TD.nodeName === 'TH') {
-      TD = TD.nextSibling;
-    }
-    var cellOffset = instance.wtDom.offset(TD);
-    var tableOffset = instance.wtTable.tableOffset;
-
-    maxSize -= cellOffset.top - tableOffset.top; //column header height
-    maxSize -= instance.getSetting('scrollbarHeight');
+  if (total > 0) {
+    newOffset = this.scrollLogicVertical(delta, offset, total, fixedCount, maxSize, function (row) {
+      if (row - offset < fixedCount && row - offset >= 0) {
+        return instance.getSetting('rowHeight', row - offset);
+      }
+      else {
+        return instance.getSetting('rowHeight', row);
+      }
+    }, function (isReverse) {
+      instance.wtTable.verticalRenderReverse = isReverse;
+    });
+  }
+  else {
+    newOffset = 0;
   }
 
-  var newOffset = this.scrollLogic(delta, offset, total, fixedCount, maxSize, function (row) {
-    if (row - offset < fixedCount) {
-      return instance.getSetting('rowHeight', row - offset);
-    }
-    else {
-      return instance.getSetting('rowHeight', row);
-    }
-  });
-
   if (newOffset !== offset) {
-    instance.update('offsetRow', newOffset);
+    this.instance.wtScrollbars.vertical.scrollTo(newOffset);
   }
   return instance;
 };
@@ -57,27 +42,48 @@ WalkontableScroll.prototype.scrollHorizontal = function (delta) {
   }
 
   var instance = this.instance
+    , newOffset
     , offset = instance.getSetting('offsetColumn')
     , fixedCount = instance.getSetting('fixedColumnsLeft')
     , total = instance.getSetting('totalColumns')
-    , maxSize = instance.getSetting('width') - instance.getSetting('rowHeaderWidth');
+    , maxSize = instance.wtViewport.getViewportWidth();
 
-  var newOffset = this.scrollLogic(delta, offset, total, fixedCount, maxSize, function (col) {
-    if (col - offset < fixedCount) {
-      return instance.getSetting('columnWidth', col - offset);
-    }
-    else {
-      return instance.getSetting('columnWidth', col);
-    }
-  });
+  if (total > 0) {
+    newOffset = this.scrollLogicHorizontal(delta, offset, total, fixedCount, maxSize, function (col) {
+      if (col - offset < fixedCount && col - offset >= 0) {
+        return instance.getSetting('columnWidth', col - offset);
+      }
+      else {
+        return instance.getSetting('columnWidth', col);
+      }
+    });
+  }
+  else {
+    newOffset = 0;
+  }
 
   if (newOffset !== offset) {
-    instance.update('offsetColumn', newOffset);
+    this.instance.wtScrollbars.horizontal.scrollTo(newOffset);
   }
   return instance;
 };
 
-WalkontableScroll.prototype.scrollLogic = function (delta, offset, total, fixedCount, maxSize, cellSizeFn) {
+WalkontableScroll.prototype.scrollLogicVertical = function (delta, offset, total, fixedCount, maxSize, cellSizeFn, setReverseRenderFn) {
+  var newOffset = offset + delta;
+
+  if (newOffset >= total - fixedCount) {
+    newOffset = total - fixedCount - 1;
+    setReverseRenderFn(true);
+  }
+
+  if (newOffset < 0) {
+    newOffset = 0;
+  }
+
+  return newOffset;
+};
+
+WalkontableScroll.prototype.scrollLogicHorizontal = function (delta, offset, total, fixedCount, maxSize, cellSizeFn) {
   var newOffset = offset + delta
     , sum = 0
     , col;
@@ -117,14 +123,57 @@ WalkontableScroll.prototype.scrollLogic = function (delta, offset, total, fixedC
  * Scrolls viewport to a cell by minimum number of cells
  */
 WalkontableScroll.prototype.scrollViewport = function (coords) {
+  if (!this.instance.drawn) {
+    return;
+  }
+
   var offsetRow = this.instance.getSetting('offsetRow')
     , offsetColumn = this.instance.getSetting('offsetColumn')
     , lastVisibleRow = this.instance.wtTable.getLastVisibleRow()
-    , lastVisibleColumn = this.instance.wtTable.getLastVisibleColumn()
     , totalRows = this.instance.getSetting('totalRows')
     , totalColumns = this.instance.getSetting('totalColumns')
     , fixedRowsTop = this.instance.getSetting('fixedRowsTop')
     , fixedColumnsLeft = this.instance.getSetting('fixedColumnsLeft');
+
+  if (this.instance.getSetting('nativeScrollbars')) {
+    var TD = this.instance.wtTable.getCell(coords);
+    if (typeof TD === 'object') {
+      var offset = WalkontableDom.prototype.offset(TD);
+      var outerWidth = WalkontableDom.prototype.outerWidth(TD);
+      var outerHeight = WalkontableDom.prototype.outerHeight(TD);
+      var scrollX = this.instance.wtScrollbars.horizontal.getScrollPosition();
+      var scrollY = this.instance.wtScrollbars.vertical.getScrollPosition();
+      var clientWidth = WalkontableDom.prototype.outerWidth(this.instance.wtScrollbars.horizontal.scrollHandler);
+      var clientHeight = WalkontableDom.prototype.outerHeight(this.instance.wtScrollbars.vertical.scrollHandler);
+      if (this.instance.wtScrollbars.horizontal.scrollHandler !== window) {
+        offset.left = offset.left - WalkontableDom.prototype.offset(this.instance.wtScrollbars.horizontal.scrollHandler).left;
+      }
+      if (this.instance.wtScrollbars.vertical.scrollHandler !== window) {
+        offset.top = offset.top - WalkontableDom.prototype.offset(this.instance.wtScrollbars.vertical.scrollHandler).top;
+      }
+
+      clientWidth -= 20;
+      clientHeight -= 20;
+
+      if (outerWidth < clientWidth) {
+        if (offset.left < scrollX) {
+          this.instance.wtScrollbars.horizontal.setScrollPosition(offset.left);
+        }
+        else if (offset.left + outerWidth > scrollX + clientWidth) {
+          this.instance.wtScrollbars.horizontal.setScrollPosition(offset.left - clientWidth + outerWidth);
+        }
+      }
+      if (outerHeight < clientHeight) {
+        if (offset.top < scrollY) {
+          this.instance.wtScrollbars.vertical.setScrollPosition(offset.top);
+        }
+        else if (offset.top + outerHeight > scrollY + clientHeight) {
+          this.instance.wtScrollbars.vertical.setScrollPosition(offset.top - clientHeight + outerHeight);
+        }
+      }
+      return;
+    }
+  }
 
   if (coords[0] < 0 || coords[0] > totalRows - 1) {
     throw new Error('row ' + coords[0] + ' does not exist');
@@ -134,10 +183,14 @@ WalkontableScroll.prototype.scrollViewport = function (coords) {
   }
 
   if (coords[0] > lastVisibleRow) {
-    this.scrollVertical(coords[0] - lastVisibleRow + 1);
+//    this.scrollVertical(coords[0] - lastVisibleRow + 1);
+    this.scrollVertical(coords[0] - fixedRowsTop - offsetRow);
+    this.instance.wtTable.verticalRenderReverse = true;
   }
-  else if (coords[0] === lastVisibleRow && this.instance.wtTable.isLastRowIncomplete()) {
-    this.scrollVertical(coords[0] - lastVisibleRow + 1);
+  else if (coords[0] === lastVisibleRow && this.instance.wtTable.rowStrategy.isLastIncomplete()) {
+//    this.scrollVertical(coords[0] - lastVisibleRow + 1);
+    this.scrollVertical(coords[0] - fixedRowsTop - offsetRow);
+    this.instance.wtTable.verticalRenderReverse = true;
   }
   else if (coords[0] - fixedRowsTop < offsetRow) {
     this.scrollVertical(coords[0] - fixedRowsTop - offsetRow);
@@ -146,18 +199,33 @@ WalkontableScroll.prototype.scrollViewport = function (coords) {
     this.scrollVertical(0); //Craig's issue: remove row from the last scroll page should scroll viewport a row up if needed
   }
 
-  if (coords[1] > lastVisibleColumn) {
-    this.scrollHorizontal(coords[1] - lastVisibleColumn + 1);
+  if (this.instance.wtTable.isColumnBeforeViewport(coords[1])) {
+    //scroll left
+    this.instance.wtScrollbars.horizontal.scrollTo(coords[1] - fixedColumnsLeft);
   }
-  else if (coords[1] === lastVisibleColumn && this.instance.wtTable.isLastColumnIncomplete()) {
-    this.scrollHorizontal(coords[1] - lastVisibleColumn + 1);
+  else if (this.instance.wtTable.isColumnAfterViewport(coords[1]) || (this.instance.wtTable.getLastVisibleColumn() === coords[1] && !this.instance.wtTable.isLastColumnFullyVisible())) {
+    //scroll right
+    var sum = 0;
+    for (var i = 0; i < fixedColumnsLeft; i++) {
+      sum += this.instance.getSetting('columnWidth', i);
+    }
+    var scrollTo = coords[1];
+    sum += this.instance.getSetting('columnWidth', scrollTo);
+    var available = this.instance.wtViewport.getViewportWidth();
+    if (sum < available) {
+      var next = this.instance.getSetting('columnWidth', scrollTo - 1);
+      while (sum + next <= available && scrollTo >= fixedColumnsLeft) {
+        scrollTo--;
+        sum += next;
+        next = this.instance.getSetting('columnWidth', scrollTo - 1);
+      }
+    }
+
+    this.instance.wtScrollbars.horizontal.scrollTo(scrollTo - fixedColumnsLeft);
   }
-  else if (coords[1] - fixedColumnsLeft < offsetColumn) {
-    this.scrollHorizontal(coords[1] - fixedColumnsLeft - offsetColumn);
-  }
-  else {
-    this.scrollHorizontal(0); //Craig's issue
-  }
+  /*else {
+   //no scroll
+   }*/
 
   return this.instance;
 };

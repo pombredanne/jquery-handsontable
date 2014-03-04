@@ -3,39 +3,80 @@
 
   /**
    * Handsontable RemoveRow extension. See `demo/buttons.html` for example usage
+   * See `.../test/jasmine/spec/extensions/removeRowSpec.js` for tests
    */
-  Handsontable.PluginHooks.push('walkontableConfig', function (walkontableConfig) {
+
+  function init() {
     var instance = this;
 
-    var getButton = function (td) {
-      return $(td).parents('tr').find('th.htRemoveRow:eq(0) .btn');
-    };
+    var pluginEnabled = !!(instance.getSettings().removeRowPlugin);
 
-    instance.rootElement.on('mouseover', 'tbody th, tbody td', function () {
-      getButton(this).show();
-    });
-    instance.rootElement.on('mouseout', 'tbody th, tbody td', function () {
-      getButton(this).hide();
-    });
-
-    instance.rootElement.addClass('htRemoveRow');
-
-    if(!walkontableConfig.rowHeaders) {
-      walkontableConfig.rowHeaders = [];
+    if (pluginEnabled) {
+      bindMouseEvents();
+      instance.rootElement.addClass('htRemoveRow');
+    } else {
+      unbindMouseEvents();
+      instance.rootElement.removeClass('htRemoveRow');
     }
-    walkontableConfig.rowHeaders.unshift(function(row, elem){
-      if(elem.nodeName == 'COL') {
-        $(elem).addClass('htRemoveRow');
-        return;
-      }
 
-      var $div = $('<div class="btn">x</div>');
-      $div.on('mouseup', function(){
-        instance.alter("remove_row", row);
+    function bindMouseEvents() {
+      instance.rootElement.on('mouseover.removeRow', 'tbody th, tbody td', function () {
+        getButton(this).show();
       });
+      instance.rootElement.on('mouseout.removeRow', 'tbody th, tbody td', function () {
+        getButton(this).hide();
+      });
+    }
 
-      var $th = $(elem);
-      $th.addClass('htRemoveRow htNoFrame').html($div);
-    });
+    function unbindMouseEvents() {
+      instance.rootElement.off('mouseover.removeRow');
+      instance.rootElement.off('mouseout.removeRow');
+    }
+
+    function getButton(td) {
+      return $(td).parent('tr').find('th.htRemoveRow').eq(0).find('.btn');
+    }
+  }
+
+
+  Handsontable.PluginHooks.add('beforeInitWalkontable', function (walkontableConfig) {
+    var instance = this;
+
+    /**
+     * rowHeaders is a function, so to alter the actual value we need to alter the result returned by this function
+     */
+    var baseRowHeaders = walkontableConfig.rowHeaders;
+    walkontableConfig.rowHeaders = function () {
+      var pluginEnabled = Boolean(instance.getSettings().removeRowPlugin);
+
+      var newRowHeader = function (row, elem) {
+        var child
+          , div;
+        while (child = elem.lastChild) {
+          elem.removeChild(child);
+        }
+        elem.className = 'htNoFrame htRemoveRow';
+        if (row > -1) {
+          div = document.createElement('div');
+          div.className = 'btn';
+          div.appendChild(document.createTextNode('x'));
+          elem.appendChild(div);
+
+          $(div).on('mouseup', function () {
+            instance.alter("remove_row", row);
+          });
+        }
+      };
+
+      return pluginEnabled ? Array.prototype.concat.call([], newRowHeader, baseRowHeaders()) : baseRowHeaders();
+    };
+  });
+
+  Handsontable.PluginHooks.add('beforeInit', function () {
+    init.call(this)
+  });
+
+  Handsontable.PluginHooks.add('afterUpdateSettings', function () {
+    init.call(this)
   });
 })(jQuery);

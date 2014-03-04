@@ -38,11 +38,7 @@ describe('Core_keepEmptyRows', function () {
       ]
     });
 
-    waitsFor(nextFrame, 'next frame', 60);
-
-    runs(function () {
-      expect(this.$container.find('tbody tr:first td').length).toEqual(2);
-    });
+    expect(this.$container.find('tbody tr:first td').length).toEqual(2);
   });
 
   it('should create columns if needed', function () {
@@ -58,11 +54,7 @@ describe('Core_keepEmptyRows', function () {
       ]
     });
 
-    waitsFor(nextFrame, 'next frame', 60);
-
-    runs(function () {
-      expect(this.$container.find('tbody tr:first td').length).toEqual(6);
-    });
+    expect(this.$container.find('tbody tr:first td').length).toEqual(6);
   });
 
   it('should create spare cols and rows on init (array data source)', function () {
@@ -77,11 +69,7 @@ describe('Core_keepEmptyRows', function () {
       minSpareCols: 4
     });
 
-    waitsFor(nextFrame, 'next frame', 60);
-
-    runs(function () {
-      expect(countCells()).toEqual(36);
-    });
+    expect(countCells()).toEqual(36);
   });
 
   it('should create spare cols and rows on init (object data source)', function () {
@@ -91,13 +79,9 @@ describe('Core_keepEmptyRows', function () {
       minSpareRows: 1
     });
 
-    waitsFor(nextFrame, 'next frame', 60);
-
-    runs(function () {
-      expect(countRows()).toEqual(4);
-      expect(countCols()).toEqual(6); //because arrayOfNestedObjects has 6 nested properites and they should be figured out if dataSchema/columns is not given
-      expect(this.$container.find('tbody tr:first td:last').text()).toEqual('City Name');
-    });
+    expect(countRows()).toEqual(4);
+    expect(countCols()).toEqual(6); //because arrayOfNestedObjects has 6 nested properites and they should be figured out if dataSchema/columns is not given
+    expect(this.$container.find('tbody tr:first td:last').text()).toEqual('City Name');
   });
 
   it('should create new row when last cell in last row is edited', function () {
@@ -114,11 +98,7 @@ describe('Core_keepEmptyRows', function () {
     });
     setDataAtCell(3, 3, "test");
 
-    waitsFor(nextFrame, 'next frame', 60);
-
-    runs(function () {
-      expect(data.length).toEqual(5);
-    });
+    expect(data.length).toEqual(5);
   });
 
   it('should create new col when last cell in last row is edited', function () {
@@ -135,17 +115,19 @@ describe('Core_keepEmptyRows', function () {
     });
     setDataAtCell(3, 3, "test");
 
-    waitsFor(nextFrame, 'next frame', 60);
-
-    runs(function () {
-      expect(countCols()).toEqual(5);
-    });
+    expect(countCols()).toEqual(5);
   });
 
   it('should create new row when last cell in last row is edited by autocomplete', function () {
     var data = [
-          {id: 1, color: "orange" },
+          {id: 1, color: "orange" }
         ];
+
+    var syncSources = jasmine.createSpy('syncSources');
+
+    syncSources.plan = function (query, process) {
+      process(['red', 'dark-yellow', 'yellow', 'light-yellow', 'black']);
+    };
 
     handsontable({
       data: data,
@@ -154,28 +136,30 @@ describe('Core_keepEmptyRows', function () {
       minSpareRows: 1,
       columns: [
         {data: "id", type: 'text'},
-        {data: "color",
-          type: 'autocomplete',
-          source: ["yellow", "red", "orange"]
+        {
+          data: "color",
+          editor: 'autocomplete',
+          source: syncSources
         }
       ]
     });
 
     selectCell(1, 1);
 
-    waits(51);
+    keyDownUp('enter');
+
+    waitsFor(function () {
+      return syncSources.calls.length > 0;
+    }, 'Source function call', 1000);
 
     runs(function () {
-      keyDownUp('enter');
       keyDown('arrow_down');
       keyDownUp('enter');
-    });
 
-    waits(51);
-
-    runs(function () {
       expect(data.length).toEqual(3);
     });
+
+
   });
 
   it('should not create more rows that maxRows', function () {
@@ -188,11 +172,7 @@ describe('Core_keepEmptyRows', function () {
     setDataAtCell(4, 0, "test");
     setDataAtCell(5, 0, "test");
 
-    waitsFor(nextFrame, 'next frame', 60);
-
-    runs(function () {
-      expect(countRows()).toEqual(6);
-    });
+    expect(countRows()).toEqual(6);
   });
 
   it('should not create more cols that maxCols', function () {
@@ -205,11 +185,7 @@ describe('Core_keepEmptyRows', function () {
     setDataAtCell(0, 4, "test");
     setDataAtCell(0, 5, "test");
 
-    waitsFor(nextFrame, 'next frame', 60);
-
-    runs(function () {
-      expect(countCols()).toEqual(6);
-    });
+    expect(countCols()).toEqual(6);
   });
 
   it('should ignore minCols if columns is set', function () {
@@ -222,11 +198,7 @@ describe('Core_keepEmptyRows', function () {
       ]
     });
 
-    waitsFor(nextFrame, 'next frame', 60);
-
-    runs(function () {
-      expect(countCols()).toEqual(2);
-    });
+    expect(countCols()).toEqual(2);
   });
 
   it('columns should have priority over startCols', function () {
@@ -239,10 +211,6 @@ describe('Core_keepEmptyRows', function () {
       ]
     });
 
-    waitsFor(nextFrame, 'next frame', 60);
-
-    runs(function () {
-      expect(countCols()).toEqual(2);
-    });
+    expect(countCols()).toEqual(2);
   });
 });

@@ -16,73 +16,141 @@ describe('Core_destroyEditor', function () {
     handsontable();
     selectCell(1, 1);
 
-    waitsFor(nextFrame, 'next frame', 60);
+    keyDownUp('enter');
 
-    runs(function () {
-      keyDownUp('enter');
-    });
-
-    waitsFor(nextFrame, 'next frame', 60);
-
-    runs(function () {
-      destroyEditor();
-      expect(isEditorVisible()).toEqual(false);
-    });
+    destroyEditor();
+    expect(isEditorVisible()).toEqual(false);
   });
 
   it('value should be saved', function () {
     handsontable();
     selectCell(1, 1);
 
-    waitsFor(nextFrame, 'next frame', 60);
+    keyDownUp('enter');
+    keyProxy().val('Ted');
 
-    runs(function () {
-      keyDownUp('enter');
-      keyProxy().val('Ted');
-    });
-
-    waitsFor(nextFrame, 'next frame', 60);
-
-    runs(function () {
-      destroyEditor();
-      expect(getDataAtCell(1, 1)).toEqual('Ted');
-    });
+    destroyEditor();
+    expect(getDataAtCell(1, 1)).toEqual('Ted');
   });
 
   it('cell should be selected', function () {
     handsontable();
     selectCell(1, 1);
 
-    waitsFor(nextFrame, 'next frame', 60);
+    keyDownUp('enter');
 
-    runs(function () {
-      keyDownUp('enter');
-    });
-
-    waitsFor(nextFrame, 'next frame', 60);
-
-    runs(function () {
-      destroyEditor();
-      expect(getSelected()).toEqual([1, 1, 1, 1]);
-    });
+    destroyEditor();
+    expect(getSelected()).toEqual([1, 1, 1, 1]);
   });
 
   it('should revert original value when param set to true', function () {
     handsontable();
     selectCell(1, 1);
 
-    waitsFor(nextFrame, 'next frame', 60);
+    keyDownUp('enter');
+    keyProxy().val('Ted');
 
-    runs(function () {
-      keyDownUp('enter');
-      keyProxy().val('Ted');
+    destroyEditor(true);
+    expect(getDataAtCell(1, 1)).toEqual(null);
+  });
+
+  it("should destroy editor after clicking on horizontal scroll bar", function () {
+    this.$container.css({
+      width: 200,
+      height: 100
     });
 
-    waitsFor(nextFrame, 'next frame', 60);
-
-    runs(function () {
-      destroyEditor(true);
-      expect(getDataAtCell(1, 1)).toEqual(null);
+    handsontable({
+      data: createSpreadsheetData(20, 10)
     });
+
+    selectCell(0, 0);
+    keyDown('enter');
+
+    var editor = $('.handsontableInputHolder');
+
+    expect(editor.is(':visible')).toBe(true);
+
+    var horizontalScrollbar = $('.dragdealer.horizontal');
+
+    horizontalScrollbar.trigger('mousedown');
+
+    expect(editor.is(':visible')).toBe(false);
+
+  });
+
+  it("should destroy editor after clicking on horizontal scroll bar handle", function () {
+    this.$container.css({
+      width: 200,
+      height: 100
+    });
+
+    handsontable({
+      data: createSpreadsheetData(20, 10)
+    });
+
+    selectCell(0, 0);
+    keyDown('enter');
+
+    var editor = $('.handsontableInputHolder');
+
+    expect(editor.is(':visible')).toBe(true);
+
+    var horizontalScrollbarHandle = $('.dragdealer.horizontal .handle');
+
+    horizontalScrollbarHandle.trigger('mousedown');
+
+    expect(editor.is(':visible')).toBe(false);
+
+  });
+
+  it("should destroy editor after clicking on vertical scroll bar", function () {
+    this.$container.css({
+      width: 200,
+      height: 100
+    });
+
+    handsontable({
+      data: createSpreadsheetData(20, 10)
+    });
+
+    selectCell(0, 0);
+    keyDown('enter');
+
+    var editor = $('.handsontableInputHolder');
+
+    expect(editor.is(':visible')).toBe(true);
+
+    var verticalScrollbar = $('.dragdealer.vertical');
+
+    verticalScrollbar.trigger('mousedown');
+
+    expect(editor.is(':visible')).toBe(false);
+
+  });
+
+  it("should destroy editor after clicking on vertical scroll bar", function () {
+    this.$container.css({
+      width: 200,
+      height: 100
+    });
+
+    handsontable({
+      data: createSpreadsheetData(20, 10)
+    });
+
+    selectCell(0, 0);
+    keyDown('enter');
+
+    var editor = $('.handsontableInputHolder');
+
+    expect(editor.is(':visible')).toBe(true);
+
+    var verticalScrollbarHandle = $('.dragdealer.vertical .handle');
+
+    verticalScrollbarHandle.trigger('mousedown');
+
+    expect(editor.is(':visible')).toBe(false);
+
   });
 });

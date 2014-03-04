@@ -50,10 +50,7 @@
 </head>
 
 <body>
-<a href="http://github.com/warpech/jquery-handsontable">
-  <img style="position: absolute; top: 0; right: 0; border: 0;"
-       src="http://s3.amazonaws.com/github/ribbons/forkme_right_darkblue_121621.png" alt="Fork me on GitHub"/>
-</a>
+<a href="http://github.com/warpech/jquery-handsontable" class="forkMeOnGitHub">Fork me on GitHub</a>
 
 <div id="container">
 <div class="columnLayout">
@@ -110,24 +107,8 @@
   <div class="codeLayout">
     <div class="pad">
       <div class="jsFiddle">
-        <div class="jsFiddleLink" data-runfiddle="example1">Edit in jsFiddle</div>
+        <button class="jsFiddleLink" data-runfiddle="example1">Edit in jsFiddle</button>
       </div>
-
-      <script data-jsfiddle="common">
-        function myAutocompleteRenderer(instance, td, row, col, prop, value, cellProperties) {
-          Handsontable.AutocompleteCell.renderer.apply(this, arguments);
-          td.style.fontStyle = 'italic';
-          td.title = 'Type to show the list of options';
-        }
-
-        function colorHighlighter(item) {
-          var query = this.query.replace(/[\-\[\]{}()*+?.,\\\^$|#\s]/g, '\\$&');
-          var label = item.replace(new RegExp('(' + query + ')', 'ig'), function ($1, match) {
-            return '<strong>' + match + '</strong>';
-          });
-          return '<span style="margin-right: 10px; background-color: ' + item + '">&nbsp;&nbsp;&nbsp;</span>' + label;
-        }
-      </script>
 
       <script data-jsfiddle="example1">
         $("#example1").handsontable({
@@ -137,24 +118,19 @@
           colHeaders: ["Car", "Year", "Chassis color", "Bumper color"],
           columns: [
             {
-              type: {renderer: myAutocompleteRenderer, editor: Handsontable.AutocompleteEditor},
+              type: 'autocomplete',
               source: ["BMW", "Chrysler", "Nissan", "Suzuki", "Toyota", "Volvo"],
-              strict: false,
-              options: {
-                items: 4 //`options` overrides `defaults` defined in bootstrap typeahead
-              }
+              strict: false
             },
             {type: 'numeric'},
             {
-              type: {renderer: myAutocompleteRenderer, editor: Handsontable.AutocompleteEditor},
+              type: 'autocomplete',
               source: ["yellow", "red", "orange", "green", "blue", "gray", "black", "white"],
-              highlighter: colorHighlighter,
               strict: false
             },
             {
-              type: {renderer: myAutocompleteRenderer, editor: Handsontable.AutocompleteEditor},
+              type: 'autocomplete',
               source: ["yellow", "red", "orange", "green", "blue", "gray", "black", "white"],
-              highlighter: colorHighlighter,
               strict: false
             }
           ]
@@ -190,7 +166,7 @@
   <div class="codeLayout">
     <div class="pad">
       <div class="jsFiddle">
-        <div class="jsFiddleLink" data-runfiddle="example2">Edit in jsFiddle</div>
+        <button class="jsFiddleLink" data-runfiddle="example2">Edit in jsFiddle</button>
       </div>
 
       <script data-jsfiddle="example2">
@@ -201,21 +177,21 @@
           colHeaders: ["Car", "Year", "Chassis color", "Bumper color"],
           columns: [
             {
-              type: {renderer: myAutocompleteRenderer, editor: Handsontable.AutocompleteEditor},
+              type: 'autocomplete',
               source: ["BMW", "Chrysler", "Nissan", "Suzuki", "Toyota", "Volvo", ""], //empty string is a valid value
-              strict: true
+              strict: true,
+              allowInvalid: false
+
             },
             {},
             {
-              type: {renderer: myAutocompleteRenderer, editor: Handsontable.AutocompleteEditor},
+              type: 'autocomplete',
               source: ["yellow", "red", "orange", "green", "blue", "gray", "black", "white"],
-              highlighter: colorHighlighter,
               strict: true
             },
             {
-              type: {renderer: myAutocompleteRenderer, editor: Handsontable.AutocompleteEditor},
+              type: 'autocomplete',
               source: ["yellow", "red", "orange", "green", "blue", "gray", "black", "white"],
-              highlighter: colorHighlighter,
               strict: true
             }
           ]
@@ -253,7 +229,7 @@
       <div class="jsFiddle">
         <!--
         Ajax example will not work with JSFiddle at the moment because `php/cars.php` does not implement CORS.
-        <div class="jsFiddleLink">Edit in jsFiddle</div>
+        <button class="jsFiddleLink">Edit in jsFiddle</button>
       -->
       </div>
 
@@ -265,8 +241,7 @@
           colHeaders: ["Car", "Year", "Chassis color", "Bumper color"],
           columns: [
             {
-              type: {renderer: myAutocompleteRenderer, editor: Handsontable.AutocompleteEditor},
-              options: {items: 10}, //`options` overrides `defaults` defined in bootstrap typeahead
+              type: 'autocomplete',
               source: function (query, process) {
                 $.ajax({
                   url: 'php/cars.php',

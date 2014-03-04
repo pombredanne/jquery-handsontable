@@ -28,28 +28,81 @@ describe('NumericEditor', function () {
   };
 
   it('should convert numeric value to number (object data source)', function () {
+
+    var onAfterValidate = jasmine.createSpy('onAfterValidate');
+
     handsontable({
       data: arrayOfObjects(),
       columns: [
         {data: 'id', type: 'numeric'},
         {data: 'name'},
         {data: 'lastName'}
-      ]
+      ],
+      afterValidate: onAfterValidate
     });
     selectCell(2, 0);
 
-    waitsFor(nextFrame, 'next frame', 60);
+    keyDown('enter');
+    document.activeElement.value = '999';
+
+    destroyEditor();
+
+    waitsFor(function () {
+      return onAfterValidate.calls.length > 0;
+    }, 'Cell validation', 1000);
 
     runs(function () {
-      keyDown('enter');
+      expect(typeof getDataAtCell(2, 0)).toEqual('number');
+      expect(getDataAtCell(2, 0)).toEqual(999);
+    });
+
+  });
+
+  it('should allow custom validator', function () {
+
+    var onAfterValidate = jasmine.createSpy('onAfterValidate');
+
+    handsontable({
+      data: arrayOfObjects(),
+      allowInvalid: false,
+      columns: [
+        {data: 'id', type: 'numeric', validator: function(val, cb) {
+          cb(parseInt(val, 10) > 100);
+        }},
+        {data: 'name'},
+        {data: 'lastName'}
+      ],
+      afterValidate: onAfterValidate
+    });
+    selectCell(2, 0);
+
+    keyDown('enter');
+    document.activeElement.value = '99';
+
+    destroyEditor();
+
+    waitsFor(function () {
+      return onAfterValidate.calls.length > 0;
+    }, 'Cell validation', 1000);
+
+    runs(function () {
+      expect(getDataAtCell(2, 0)).not.toEqual(99); //should be ignored
+    });
+
+    runs(function () {
       document.activeElement.value = '999';
+
+      onAfterValidate.reset();
+      destroyEditor();
     });
 
-    waitsFor(nextFrame, 'next frame', 60);
+    waitsFor(function () {
+      return onAfterValidate.calls.length > 0;
+    }, 'Cell validation', 1000);
 
     runs(function () {
-      destroyEditor();
-      expect(getDataAtCell(2, 0)).toEqual(999); //should be number type
+      expect(getDataAtCell(2, 0)).toEqual(999);
     });
+
   });
 });

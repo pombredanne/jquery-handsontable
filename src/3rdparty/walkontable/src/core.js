@@ -1,24 +1,38 @@
 function Walkontable(settings) {
-  var self = this,
+  var that = this,
     originalHeaders = [];
 
+  this.guid = 'wt_' + walkontableRandomString(); //this is the namespace for global events
+
   //bootstrap from settings
-  this.wtSettings = new WalkontableSettings(this, settings);
   this.wtDom = new WalkontableDom();
-  this.wtTable = new WalkontableTable(this);
-  this.wtScroll = new WalkontableScroll(this);
-  this.wtWheel = new WalkontableWheel(this);
-  this.wtEvent = new WalkontableEvent(this);
+  if (settings.cloneSource) {
+    this.cloneSource = settings.cloneSource;
+    this.cloneOverlay = settings.cloneOverlay;
+    this.wtSettings = settings.cloneSource.wtSettings;
+    this.wtTable = new WalkontableTable(this, settings.table);
+    this.wtScroll = new WalkontableScroll(this);
+    this.wtViewport = settings.cloneSource.wtViewport;
+  }
+  else {
+    this.wtSettings = new WalkontableSettings(this, settings);
+    this.wtTable = new WalkontableTable(this, settings.table);
+    this.wtScroll = new WalkontableScroll(this);
+    this.wtViewport = new WalkontableViewport(this);
+    this.wtScrollbars = new WalkontableScrollbars(this);
+    this.wtWheel = new WalkontableWheel(this);
+    this.wtEvent = new WalkontableEvent(this);
+  }
 
   //find original headers
   if (this.wtTable.THEAD.childNodes.length && this.wtTable.THEAD.childNodes[0].childNodes.length) {
     for (var c = 0, clen = this.wtTable.THEAD.childNodes[0].childNodes.length; c < clen; c++) {
       originalHeaders.push(this.wtTable.THEAD.childNodes[0].childNodes[c].innerHTML);
     }
-    if (!this.hasSetting('columnHeaders')) {
-      this.update('columnHeaders', function (column, TH) {
-        self.wtDom.avoidInnerHTML(TH, originalHeaders[column]);
-      });
+    if (!this.getSetting('columnHeaders').length) {
+      this.update('columnHeaders', [function (column, TH) {
+        that.wtDom.fastInnerText(TH, originalHeaders[column]);
+      }]);
     }
   }
 
@@ -34,18 +48,38 @@ function Walkontable(settings) {
   }
 
   this.drawn = false;
+  this.drawInterrupted = false;
+
+  //at this point the cached row heights may be invalid, but it is better not to reset the cache, which could cause scrollbar jumping when there are multiline cells outside of the rendered part of the table
+  /*if (window.Handsontable) {
+    Handsontable.PluginHooks.add('beforeChange', function () {
+      if (that.rowHeightCache) {
+        that.rowHeightCache.length = 0;
+      }
+    });
+
+  }*/
 }
 
 Walkontable.prototype.draw = function (selectionsOnly) {
+  this.drawInterrupted = false;
+  if (!selectionsOnly && !this.wtDom.isVisible(this.wtTable.TABLE)) {
+    this.drawInterrupted = true; //draw interrupted because TABLE is not visible
+    return;
+  }
+
+  this.getSetting('beforeDraw', !selectionsOnly);
   selectionsOnly = selectionsOnly && this.getSetting('offsetRow') === this.lastOffsetRow && this.getSetting('offsetColumn') === this.lastOffsetColumn;
-  if (this.drawn) {
+  if (this.drawn) { //fix offsets that might have changed
     this.scrollVertical(0);
     this.scrollHorizontal(0);
   }
   this.lastOffsetRow = this.getSetting('offsetRow');
   this.lastOffsetColumn = this.getSetting('offsetColumn');
   this.wtTable.draw(selectionsOnly);
-  this.getSetting('onDraw');
+  if (!this.cloneSource) {
+    this.getSetting('onDraw',  !selectionsOnly);
+  }
   return this;
 };
 
@@ -54,11 +88,19 @@ Walkontable.prototype.update = function (settings, value) {
 };
 
 Walkontable.prototype.scrollVertical = function (delta) {
-  return this.wtScroll.scrollVertical(delta);
+  var result = this.wtScroll.scrollVertical(delta);
+
+  this.getSetting('onScrollVertically');
+
+  return result;
 };
 
 Walkontable.prototype.scrollHorizontal = function (delta) {
-  return this.wtScroll.scrollHorizontal(delta);
+  var result = this.wtScroll.scrollHorizontal(delta);
+
+  this.getSetting('onScrollHorizontally');
+
+  return result;
 };
 
 Walkontable.prototype.scrollViewport = function (coords) {
@@ -84,6 +126,8 @@ Walkontable.prototype.hasSetting = function (key) {
 };
 
 Walkontable.prototype.destroy = function () {
+  $(document.body).off('.' + this.guid);
+  this.wtScrollbars.destroy();
   clearTimeout(this.wheelTimeout);
-  clearTimeout(this.dblClickTimeout);
+  this.wtEvent && this.wtEvent.destroy();
 };

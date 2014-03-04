@@ -38,38 +38,26 @@
   <script src="js/ga.js"></script>
 
   <script data-jsfiddle="common">
-    function randomString(length, chars) {
-      var result = '';
-      for (var i = length; i > 0; --i) result += chars.charAt(Math.round(Math.random() * (chars.length - 1)));
-      return result;
-    }
-
     function createBigData() {
-      var arr = [];
-      var str = 'abcdefghijklmnopqrstuvwxyz';
-      var i;
+      var rows = []
+        , i
+        , j;
 
       for (i = 0; i < 100000; i++) {
-        arr.push([
-          i,
-          randomString(3 * (1 + Math.sin(i)), str),
-          randomString(3 * (1 + Math.sin(i + 2)), str),
-          randomString(3 * (1 + Math.sin(i + 4)), str),
-          randomString(3 * (1 + Math.sin(i + 6)), str),
-          randomString(3 * (1 + Math.sin(i + 8)), str)
-        ]);
+        var row = [];
+        for (j = 0; j < 6; j++) {
+          row.push(Handsontable.helper.spreadsheetColumnLabel(j) + i);
+        }
+        rows.push(row);
       }
 
-      return arr;
+      return rows;
     }
   </script>
 </head>
 
 <body>
-<a href="http://github.com/warpech/jquery-handsontable">
-  <img style="position: absolute; top: 0; right: 0; border: 0;"
-       src="http://s3.amazonaws.com/github/ribbons/forkme_right_darkblue_121621.png" alt="Fork me on GitHub"/>
-</a>
+<a href="http://github.com/warpech/jquery-handsontable" class="forkMeOnGitHub">Fork me on GitHub</a>
 
 <div id="container">
 <div class="columnLayout">
@@ -123,7 +111,7 @@
   <div class="codeLayout">
     <div class="pad">
       <div class="jsFiddle">
-        <div class="jsFiddleLink" data-runfiddle="example1">Edit in jsFiddle</div>
+        <button class="jsFiddleLink" data-runfiddle="example1">Edit in jsFiddle</button>
       </div>
 
       <script data-jsfiddle="example1">
@@ -202,7 +190,7 @@
   <div class="codeLayout">
     <div class="pad">
       <div class="jsFiddle">
-        <div class="jsFiddleLink" data-runfiddle="example2">Edit in jsFiddle</div>
+        <button class="jsFiddleLink" data-runfiddle="example2">Edit in jsFiddle</button>
       </div>
 
       <script data-jsfiddle="example2">
@@ -253,7 +241,7 @@
   <div class="codeLayout">
     <div class="pad">
       <div class="jsFiddle">
-        <div class="jsFiddleLink" data-runfiddle="example3">Edit in jsFiddle</div>
+        <button class="jsFiddleLink" data-runfiddle="example3">Edit in jsFiddle</button>
       </div>
 
       <script data-jsfiddle="example3">
@@ -303,7 +291,7 @@
   <div class="codeLayout">
     <div class="pad">
       <div class="jsFiddle">
-        <div class="jsFiddleLink" data-runfiddle="example4">Edit in jsFiddle</div>
+        <button class="jsFiddleLink" data-runfiddle="example4">Edit in jsFiddle</button>
       </div>
 
       <script data-jsfiddle="example4">

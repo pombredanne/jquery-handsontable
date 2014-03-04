@@ -21,7 +21,8 @@ WalkontableScrollbar.prototype.init = function () {
   this.handle.className = 'handle';
 
   this.slider.appendChild(this.handle);
-  this.instance.wtTable.parent.appendChild(this.slider);
+  this.container = this.instance.wtTable.holder;
+  this.container.appendChild(this.slider);
 
   var firstRun = true;
   this.dragTimeout = null;
@@ -94,10 +95,10 @@ WalkontableScrollbar.prototype.onScroll = function (delta) {
  * @return {Number} 0..1
  */
 WalkontableScrollbar.prototype.getHandleSizeRatio = function (viewportCount, totalCount) {
-  if (!totalCount || viewportCount > totalCount) {
+  if (!totalCount || viewportCount > totalCount || viewportCount == totalCount) {
     return 1;
   }
-  return viewportCount / totalCount;
+  return 1 / totalCount;
 };
 
 WalkontableScrollbar.prototype.prepare = function () {
@@ -128,55 +129,34 @@ WalkontableScrollbar.prototype.refresh = function () {
     , handleSize
     , handlePosition
     , visibleCount = this.visibleCount
-    , tableOuterWidth = this.$table.outerWidth()
-    , tableOuterHeight = this.$table.outerHeight()
-    , tableWidth = this.instance.hasSetting('width') ? this.instance.getSetting('width') : tableOuterWidth
-    , tableHeight = this.instance.hasSetting('height') ? this.instance.getSetting('height') : tableOuterHeight;
+    , tableWidth = this.instance.wtViewport.getWorkspaceWidth()
+    , tableHeight = this.instance.wtViewport.getWorkspaceHeight();
 
-  if (!tableWidth) {
-    //throw new Error("I could not compute table width. Is the <table> element attached to the DOM?");
-    return;
-  }
-  if (!tableHeight) {
-    //throw new Error("I could not compute table height. Is the <table> element attached to the DOM?");
-    return;
+  if (tableWidth === Infinity) {
+    tableWidth = this.instance.wtViewport.getWorkspaceActualWidth();
   }
 
-  if (this.instance.hasSetting('width') && this.instance.wtScroll.wtScrollbarV.visible) {
-    tableWidth -= this.instance.getSetting('scrollbarWidth');
-  }
-  if (tableWidth > tableOuterWidth + this.instance.getSetting('scrollbarWidth')) {
-    tableWidth = tableOuterWidth;
-  }
-
-  if (this.instance.hasSetting('height') && this.instance.wtScroll.wtScrollbarH.visible) {
-    tableHeight -= this.instance.getSetting('scrollbarHeight');
-  }
-  if (tableHeight > tableOuterHeight + this.instance.getSetting('scrollbarHeight')) {
-    tableHeight = tableOuterHeight;
+  if (tableHeight === Infinity) {
+    tableHeight = this.instance.wtViewport.getWorkspaceActualHeight();
   }
 
   if (this.type === 'vertical') {
-    if (this.instance.wtTable.isLastRowIncomplete()) {
+    if (this.instance.wtTable.rowStrategy.isLastIncomplete()) {
       visibleCount--;
     }
 
     sliderSize = tableHeight - 2; //2 is sliders border-width
 
-    this.sliderStyle.top = this.$table.position().top + 'px';
+    this.sliderStyle.top = this.instance.wtDom.offset(this.$table[0]).top - this.instance.wtDom.offset(this.container).top + 'px';
     this.sliderStyle.left = tableWidth - 1 + 'px'; //1 is sliders border-width
-    this.sliderStyle.height = sliderSize + 'px';
+    this.sliderStyle.height = Math.max(sliderSize, 0) + 'px';
   }
   else { //horizontal
-    if (this.instance.wtTable.isLastColumnIncomplete()) {
-      visibleCount--;
-    }
-
     sliderSize = tableWidth - 2; //2 is sliders border-width
 
-    this.sliderStyle.left = this.$table.position().left + 'px';
+    this.sliderStyle.left = this.instance.wtDom.offset(this.$table[0]).left - this.instance.wtDom.offset(this.container).left + 'px';
     this.sliderStyle.top = tableHeight - 1 + 'px'; //1 is sliders border-width
-    this.sliderStyle.width = sliderSize + 'px';
+    this.sliderStyle.width = Math.max(sliderSize, 0) + 'px';
   }
 
   ratio = this.getHandleSizeRatio(visibleCount, this.total);
@@ -203,6 +183,10 @@ WalkontableScrollbar.prototype.refresh = function () {
   this.sliderStyle.display = 'block';
 };
 
+WalkontableScrollbar.prototype.destroy = function () {
+  clearInterval(this.dragdealer.interval);
+};
+
 ///
 
 var WalkontableVerticalScrollbar = function (instance) {
@@ -213,11 +197,18 @@ var WalkontableVerticalScrollbar = function (instance) {
 
 WalkontableVerticalScrollbar.prototype = new WalkontableScrollbar();
 
+WalkontableVerticalScrollbar.prototype.scrollTo = function (cell) {
+  this.instance.update('offsetRow', cell);
+};
+
 WalkontableVerticalScrollbar.prototype.readSettings = function () {
   this.scrollMode = this.instance.getSetting('scrollV');
   this.offset = this.instance.getSetting('offsetRow');
   this.total = this.instance.getSetting('totalRows');
-  this.visibleCount = this.instance.wtTable.countVisibleRows();
+  this.visibleCount = this.instance.wtTable.rowStrategy.countVisible();
+  if(this.visibleCount > 1 && this.instance.wtTable.rowStrategy.isLastIncomplete()) {
+    this.visibleCount--;
+  }
   this.handlePosition = parseInt(this.handleStyle.top, 10);
   this.sliderSize = parseInt(this.sliderStyle.height, 10);
   this.fixedCount = this.instance.getSetting('fixedRowsTop');
@@ -233,12 +224,26 @@ var WalkontableHorizontalScrollbar = function (instance) {
 
 WalkontableHorizontalScrollbar.prototype = new WalkontableScrollbar();
 
+WalkontableHorizontalScrollbar.prototype.scrollTo = function (cell) {
+  this.instance.update('offsetColumn', cell);
+};
+
 WalkontableHorizontalScrollbar.prototype.readSettings = function () {
   this.scrollMode = this.instance.getSetting('scrollH');
   this.offset = this.instance.getSetting('offsetColumn');
   this.total = this.instance.getSetting('totalColumns');
-  this.visibleCount = this.instance.wtTable.countVisibleColumns();
+  this.visibleCount = this.instance.wtTable.columnStrategy.countVisible();
+  if(this.visibleCount > 1 && this.instance.wtTable.columnStrategy.isLastIncomplete()) {
+    this.visibleCount--;
+  }
   this.handlePosition = parseInt(this.handleStyle.left, 10);
   this.sliderSize = parseInt(this.sliderStyle.width, 10);
   this.fixedCount = this.instance.getSetting('fixedColumnsLeft');
+};
+
+WalkontableHorizontalScrollbar.prototype.getHandleSizeRatio = function (viewportCount, totalCount) {
+  if (!totalCount || viewportCount > totalCount || viewportCount == totalCount) {
+    return 1;
+  }
+  return viewportCount / totalCount;
 };

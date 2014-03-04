@@ -17,12 +17,8 @@ describe('Core_init', function () {
     this.$container = $('<div id="' + id + '"></div>').appendTo('body');
     handsontable();
 
-    waitsFor(nextFrame, 'next frame', 60);
-
-    runs(function () {
-      expect(countRows()).toEqual(5); //as given in README.md
-      expect(countCols()).toEqual(5); //as given in README.md
-    });
+    expect(countRows()).toEqual(5); //as given in README.md
+    expect(countCols()).toEqual(5); //as given in README.md
   });
 
   it('should respect width provided in inline style', function () {
@@ -36,11 +32,7 @@ describe('Core_init', function () {
       ]
     });
 
-    waitsFor(nextFrame, 'next frame', 60);
-
-    runs(function () {
-      expect(this.$container.width()).toEqual(200);
-    });
+    expect(this.$container.width()).toEqual(200);
   });
 
   it('should respect width provided in CSS class', function () {
@@ -52,16 +44,33 @@ describe('Core_init', function () {
       ]
     });
 
-    waitsFor(nextFrame, 'next frame', 60);
-
-    runs(function () {
-      expect(this.$container.width()).toEqual(200);
-    });
+    expect(this.$container.width()).toEqual(200);
   });
 
   it('should construct when container is not appended to document', function () {
     this.$container.remove();
     handsontable();
     expect(getData()).toBeTruthy();
+  });
+
+  it('Handsontable.Dom should be available as a helper to the plugins', function () {
+    //all public methods of WalkontableDom should be exposed here
+    expect(Handsontable.Dom.closest).toBeDefined();
+    expect(Handsontable.Dom.isChildOf).toBeDefined();
+    expect(Handsontable.Dom.index).toBeDefined();
+    expect(Handsontable.Dom.hasClass).toBeDefined();
+    expect(Handsontable.Dom.addClass).toBeDefined();
+    expect(Handsontable.Dom.removeClass).toBeDefined();
+    expect(Handsontable.Dom.removeTextNodes).toBeDefined();
+    expect(Handsontable.Dom.empty).toBeDefined();
+    expect(Handsontable.Dom.fastInnerHTML).toBeDefined();
+    expect(Handsontable.Dom.fastInnerText).toBeDefined();
+    expect(Handsontable.Dom.isVisible).toBeDefined();
+    expect(Handsontable.Dom.offset).toBeDefined();
+    expect(Handsontable.Dom.getComputedStyle).toBeDefined();
+    expect(Handsontable.Dom.outerWidth).toBeDefined();
+    expect(Handsontable.Dom.outerHeight).toBeDefined();
+    expect(Handsontable.Dom.getCaretPosition).toBeDefined();
+    expect(Handsontable.Dom.setCaretPosition).toBeDefined();
   });
 });
