@@ -9,16 +9,38 @@ var handsontable = function (options) {
   return currentSpec.$container.data('handsontable');
 };
 
+/**
+ * As for v. 0.11 the only scrolling method is native scroll, which creates copies of main htCore table inside of the container.
+ * Therefore, simple $(".htCore") will return more than one object. Most of the time, you're interested in the original
+ * htCore, not the copies made by native scroll.
+ *
+ * This method returns the original htCore object
+ *
+ * @returns {jqObject} reference to the original htCore
+ */
+
+var getHtCore = function () {
+  return spec().$container.find('.htCore').first();
+};
+
+var getTopClone = function () {
+  return spec().$container.find('.ht_clone_top');
+};
+
+var getLeftClone = function () {
+  return spec().$container.find('.ht_clone_left');
+};
+
 var countRows = function () {
-  return spec().$container.find('.htCore tbody tr').length;
+  return getHtCore().find('tbody tr').length;
 };
 
 var countCols = function () {
-  return spec().$container.find('.htCore tbody tr:eq(0) td').length;
+  return getHtCore().find('tbody tr:eq(0) td').length;
 };
 
 var countCells = function () {
-  return spec().$container.find('.htCore tbody td').length;
+  return getHtCore().find('tbody td').length;
 };
 
 var isEditorVisible = function () {
@@ -36,7 +58,7 @@ var contextMenu = function () {
   var hot = spec().$container.data('handsontable');
   var selected = hot.getSelected();
 
-  if(!selected){
+  if (!selected) {
     hot.selectCell(0, 0);
     selected = hot.getSelected();
   }
@@ -63,7 +85,7 @@ var closeContextMenu = function () {
  */
 var handsontableMouseTriggerFactory = function (type, button) {
   return function (element) {
-    if(!(element instanceof jQuery)){
+    if (!(element instanceof jQuery)) {
       element = $(element);
     }
     var ev = $.Event(type);
@@ -74,11 +96,11 @@ var handsontableMouseTriggerFactory = function (type, button) {
 
 var mouseDown = handsontableMouseTriggerFactory('mousedown');
 var mouseUp = handsontableMouseTriggerFactory('mouseup');
-var mouseDoubleClick = function(element){
-    mouseDown(element);
-    mouseUp(element);
-    mouseDown(element);
-    mouseUp(element);
+var mouseDoubleClick = function (element) {
+  mouseDown(element);
+  mouseUp(element);
+  mouseDown(element);
+  mouseUp(element);
 };
 
 var mouseRightDown = handsontableMouseTriggerFactory('mousedown', 3);
@@ -139,8 +161,8 @@ var handsontableKeyTriggerFactory = function (type) {
           break;
 
         case 'backspace':
-        ev.keyCode = 8;
-        break;
+          ev.keyCode = 8;
+          break;
 
         case 'space':
           ev.keyCode = 32;
@@ -306,7 +328,7 @@ function createSpreadsheetObjectData(rowCount, colCount) {
   for (i = 0; i < rowCount; i++) {
     var row = {};
     for (j = 0; j < colCount; j++) {
-      row['prop'+j] = Handsontable.helper.spreadsheetColumnLabel(j) + i
+      row['prop' + j] = Handsontable.helper.spreadsheetColumnLabel(j) + i
     }
     rows.push(row);
   }
@@ -328,12 +350,33 @@ function colWidth($elem, col) {
 }
 
 /**
+ * Returns row height for HOT container
+ * @param $elem
+ * @param row
+ * @returns {Number}
+ */
+function rowHeight($elem, row) {
+  var TD = $elem[0].querySelector('tbody tr:nth-child(' + (row + 1) +') td');
+  if (!TD) {
+    throw new Error("Cannot find table row of index '" + row + "'");
+  }
+  var height = Handsontable.Dom.outerHeight(TD);
+  if(row == 0) {
+    height = height - 2;
+  }
+  else {
+    height = height - 1;
+  }
+  return height;
+}
+
+/**
  * Returns value that has been rendered in table cell
  * @param {Number} trIndex
  * @param {Number} tdIndex
  * @returns {String}
  */
-function getRenderedValue(trIndex, tdIndex){
+function getRenderedValue(trIndex, tdIndex) {
   return spec().$container.find('tbody tr').eq(trIndex).find('td').eq(tdIndex).html();
 }
 
@@ -343,6 +386,57 @@ function getRenderedValue(trIndex, tdIndex){
  * @param {Number} tdIndex
  * @returns {String}
  */
-function getRenderedContent(trIndex, tdIndex){
+function getRenderedContent(trIndex, tdIndex) {
   return spec().$container.find('tbody tr').eq(trIndex).find('td').eq(tdIndex).children()
+}
+
+/**
+ * Model factory, which creates object with private properties, accessible by setters and getters.
+ * Created for the purpose of testing HOT with Backbone-like Models
+ * @param opts
+ * @returns {{}}
+ * @constructor
+ */
+function Model(opts) {
+
+  var obj = {};
+
+  var _data = $.extend({
+    id: undefined,
+    name: undefined,
+    address: undefined
+  }, opts);
+
+  obj.attr = function (name, value) {
+    if (typeof value == 'undefined') {
+      return this.get(name);
+    } else {
+      return this.set(name, value);
+    }
+  };
+
+  obj.get = function (name) {
+    return _data[name];
+  };
+
+  obj.set = function (name, value) {
+    _data[name] = value;
+    return this;
+  }
+
+  return obj;
+
+}
+/**
+ * Factory which produces an accessor for objects of type "Model" (see above).
+ * This function should be used to create accessor for a given property name and pass it as `data` option in column
+ * configuration.
+ *
+ * @param name - name of the property for which an accessor function will be created
+ * @returns {Function}
+ */
+function createAccessorForProperty(name) {
+  return function (obj, value) {
+    return obj.attr(name, value);
+  }
 }
