@@ -5,11 +5,16 @@
   <title>Heatmaps - Handsontable</title>
 
   <!--
-  Loading Handsontable (full distribution that includes all dependencies apart from jQuery)
+  Loading Handsontable (full distribution that includes all dependencies
   -->
-  <script data-jsfiddle="common" src="../lib/jquery.min.js"></script>
-  <script data-jsfiddle="common" src="../dist/jquery.handsontable.full.js"></script>
-  <link data-jsfiddle="common" rel="stylesheet" media="screen" href="../dist/jquery.handsontable.full.css">
+  <link data-jsfiddle="common" rel="stylesheet" media="screen" href="../dist/handsontable.css">
+  <link data-jsfiddle="common" rel="stylesheet" media="screen" href="../dist/pikaday/pikaday.css">
+  <script data-jsfiddle="common" src="../dist/pikaday/pikaday.js"></script>
+  <script data-jsfiddle="common" src="../dist/moment/moment.js"></script>
+  <script data-jsfiddle="common" src="../dist/zeroclipboard/ZeroClipboard.js"></script>
+  <script data-jsfiddle="common" src="../dist/numbro/numbro.js"></script>
+  <script data-jsfiddle="common" src="../dist/numbro/languages.js"></script>
+  <script data-jsfiddle="common" src="../dist/handsontable.js"></script>
 
   <!--
   Loading demo dependencies. They are used here only to enhance the examples on this page
@@ -19,7 +24,7 @@
   <script src="js/highlight/highlight.pack.js"></script>
   <link rel="stylesheet" media="screen" href="js/highlight/styles/github.css">
   <link rel="stylesheet" href="css/font-awesome/css/font-awesome.min.css">
-  <script src="bower_components/chroma-js/chroma.min.js"></script>
+  <script data-jsfiddle="common" src="bower_components/chroma-js/chroma.min.js"></script>
 
   <!--
   Facebook open graph. Don't copy this to your project :)
@@ -86,8 +91,7 @@
           </div>
 
           <script data-jsfiddle="example1">
-            var container = $("#example1"), 
-            data = [
+            var data = [
                 [2002, 190251, 5090, 195341],
                 [2003, 224495, 6486, 230981],
                 [2004, 254044, 6765, 260809],
@@ -100,47 +104,16 @@
                 [2011, 290652, 10891, 301543],
                 [2012, 283863, 10402, 294265],
                 [2013, 267646, 10104, 255850]
-              ];
+              ],
+              container = document.getElementById('example1'),
+              lastChange = null,
+              heatmap,
+              heatmapScale,
+              hot;
 
-            var lastChange = null;
+            heatmapScale  = chroma.scale(['#17F556', '#ED6D47']);
 
-            var heatmap;
-            var heatmapScale  = chroma.scale(['#17F556', '#ED6D47']);
-
-            function updateHeatmap(change,source) {              
-              if(change) {
-                heatmap[change[0][1]] = generateHeatmapData.call(this, change[0][1]);
-              } else {
-                heatmap = [];
-                for(var i = 1, colCount = this.countCols(); i < colCount ; i++) {
-                  heatmap[i] = generateHeatmapData.call(this, i);
-                }
-              }
-            }
-
-            function point(min, max, value) {
-              return (value - min) / (max - min);
-            }
-
-            function generateHeatmapData(colId) {
-              var values = this.getDataAtCol(colId);
-              return {
-                min: Math.min.apply(null, values),
-                max: Math.max.apply(null, values)
-              };
-            }
-
-            function heatmapRenderer(instance, td, row, col, prop, value, cellProperties) {
-              Handsontable.renderers.TextRenderer.apply(this, arguments);
-
-              if(heatmap[col]) {
-                td.style.backgroundColor = heatmapScale(point(heatmap[col].min, heatmap[col].max, parseInt(value, 10))).hex();
-                td.style.textAlign = 'right';
-                td.style.fontWeight = 'bold';
-              }
-            }
-
-            container.handsontable({
+            hot = new Handsontable(container,{
               data: data,
               colHeaders: ["Year", "Domestic Flights", "International Flights", "Total Flights"],
               columns: [
@@ -167,13 +140,46 @@
               beforeChangeRender: updateHeatmap
             });
 
+            function updateHeatmap(change, source) {
+              if (change) {
+                heatmap[change[0][1]] = generateHeatmapData.call(this, change[0][1]);
+              } else {
+                heatmap = [];
+
+                for(var i = 1, colCount = this.countCols(); i < colCount ; i++) {
+                  heatmap[i] = generateHeatmapData.call(this, i);
+                }
+              }
+            }
+
+            function point(min, max, value) {
+              return (value - min) / (max - min);
+            }
+
+            function generateHeatmapData(colId) {
+              var values = this.getDataAtCol(colId);
+
+              return {
+                min: Math.min.apply(null, values),
+                max: Math.max.apply(null, values)
+              };
+            }
+
+            function heatmapRenderer(instance, td, row, col, prop, value, cellProperties) {
+              Handsontable.renderers.TextRenderer.apply(this, arguments);
+
+              if (heatmap[col]) {
+                td.style.backgroundColor = heatmapScale(point(heatmap[col].min, heatmap[col].max, parseInt(value, 10))).hex();
+                td.style.textAlign = 'right';
+                td.style.fontWeight = 'bold';
+              }
+            }
           </script>
         </div>
       </div>
     </div>
 
-        <div class="footer-text">Handsontable &copy; 2012-2014 Marcin Warpechowski and contributors.<br> Code and documentation
-          licensed under the The MIT License.
+        <div class="footer-text">
         </div>
       </div>
 

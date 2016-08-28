@@ -1,12 +1,16 @@
 describe('WalkontableScrollbar', function () {
   var $table
+    , $container
+    , $wrapper
     , debug = false;
 
   beforeEach(function () {
-    $container = $('<div></div>').css({'overflow': 'auto'});
-    $container.width(100).height(200);
+    $wrapper = $('<div></div>').css({'overflow': 'hidden'});
+    $container = $('<div></div>');
     $table = $('<table></table>'); //create a table that is not attached to document
-    $container.append($table).appendTo('body');
+    $wrapper.append($container);
+    $container.append($table);
+    $wrapper.appendTo('body');
     createDataArray();
   });
 
@@ -14,7 +18,7 @@ describe('WalkontableScrollbar', function () {
     if (!debug) {
       $('.wtHolder').remove();
     }
-    $container.remove();
+    $wrapper.remove();
   });
 
   it("should table in DIV.wtHolder that contains 2 scrollbars", function () {
@@ -22,18 +26,14 @@ describe('WalkontableScrollbar', function () {
       table: $table[0],
       data: getData,
       totalRows: getTotalRows,
-      totalColumns: getTotalColumns,
-      offsetRow: 0,
-      offsetColumn: 0,
-      height: 200,
-      width: 100
+      totalColumns: getTotalColumns
     });
     wt.draw();
 
     expect($table.parents('.wtHolder').length).toEqual(1);
   });
 
-  it("scrolling should have no effect when totalRows/Columns is smaller than height/width", function () {
+  it("scrolling should have no effect when totalRows is smaller than height", function () {
     this.data.splice(5, this.data.length - 5);
 
     try {
@@ -41,23 +41,14 @@ describe('WalkontableScrollbar', function () {
         table: $table[0],
         data: getData,
         totalRows: getTotalRows,
-        totalColumns: getTotalColumns,
-        offsetRow: 0,
-        offsetColumn: 0,
-        height: 200,
-        width: 500
+        totalColumns: getTotalColumns
       });
       wt.draw();
 
-      wt.wtScrollbars.horizontal.onScroll(1);
-      expect(wt.getSetting('offsetColumn')).toEqual(0);
-      wt.wtScrollbars.horizontal.onScroll(-1);
-      expect(wt.getSetting('offsetColumn') + 1).toEqual(1); //+1 so it can be distinguished from previous one
-
-      wt.wtScrollbars.vertical.onScroll(1);
-      expect(wt.getSetting('offsetRow') + 2).toEqual(2); //+2 so it can be distinguished from previous one
-      wt.wtScrollbars.vertical.onScroll(-1);
-      expect(wt.getSetting('offsetRow') + 3).toEqual(3); //+3 so it can be distinguished from previous one
+      wt.wtOverlays.topOverlay.onScroll(1);
+      expect(wt.getViewport()[0]).toEqual(0);
+      wt.wtOverlays.topOverlay.onScroll(-1);
+      expect(wt.getViewport()[0]).toEqual(0);
     }
     catch (e) {
       expect(e).toBeUndefined();

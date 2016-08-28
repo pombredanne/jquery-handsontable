@@ -32,21 +32,22 @@ describe('Core_setDataAtCell', function () {
   var htmlText = "Ben & Jerry's";
 
   it('HTML special chars should be preserved in data map but escaped in DOM', function () {
-    //https://github.com/handsontable/jquery-handsontable/issues/147
+    //https://github.com/handsontable/handsontable/issues/147
     handsontable();
     var td = setDataAtCell(0, 0, htmlText);
     selectCell(0, 0);
-    $(td).trigger("dblclick");
+//    $(td).trigger("dblclick");
+    $(td).simulate("dblclick");
     deselectCell();
     expect(getDataAtCell(0, 0)).toEqual(htmlText);
   });
 
   it('should correctly paste string that contains "quotes"', function () {
-    //https://github.com/handsontable/jquery-handsontable/issues/205
+    //https://github.com/handsontable/handsontable/issues/205
     var called;
     runs(function () {
       handsontable({
-        onChange: function (changes, source) {
+        afterChange: function (changes, source) {
           if (source === 'paste') {
             called = true;
           }
@@ -68,7 +69,7 @@ describe('Core_setDataAtCell', function () {
   });
 
   it('should correctly paste string when dataSchema is used', function () {
-    //https://github.com/handsontable/jquery-handsontable/issues/237
+    //https://github.com/handsontable/handsontable/issues/237
     var called;
     runs(function () {
       handsontable({
@@ -78,7 +79,7 @@ describe('Core_setDataAtCell', function () {
           col2: null,
           col3: null
         },
-        onChange: function (changes, source) {
+        afterChange: function (changes, source) {
           if (source === 'paste') {
             called = true;
           }
@@ -106,7 +107,7 @@ describe('Core_setDataAtCell', function () {
         minSpareRows: 1,
         minRows: 5,
         maxRows: 10,
-        onChange: function (changes, source) {
+        afterChange: function (changes, source) {
           if (source === 'paste') {
             called = true;
           }
@@ -134,7 +135,7 @@ describe('Core_setDataAtCell', function () {
         minSpareCols: 1,
         minCols: 5,
         maxCols: 10,
-        onChange: function (changes, source) {
+        afterChange: function (changes, source) {
           if (source === 'paste') {
             called = true;
           }
@@ -164,7 +165,7 @@ describe('Core_setDataAtCell', function () {
         minCols: 5,
         maxRows: 6,
         maxCols: 6,
-        onChange: function (changes, source) {
+        afterChange: function (changes, source) {
           if (source === 'paste') {
             called = true;
           }
@@ -185,7 +186,7 @@ describe('Core_setDataAtCell', function () {
     });
   });
 
-  //https://github.com/handsontable/jquery-handsontable/issues/250
+  //https://github.com/handsontable/handsontable/issues/250
   it('should create new rows when pasting into grid with object data source', function () {
     var called;
     runs(function () {
@@ -198,7 +199,7 @@ describe('Core_setDataAtCell', function () {
           {data: "name.first"}
         ],
         minSpareRows: 1,
-        onChange: function (changes, source) {
+        afterChange: function (changes, source) {
           if (source === 'paste') {
             called = true;
           }

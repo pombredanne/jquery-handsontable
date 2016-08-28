@@ -1,207 +1,267 @@
-function WalkontableScroll(instance) {
-  this.instance = instance;
-}
-
-WalkontableScroll.prototype.scrollVertical = function (delta) {
-  if (!this.instance.drawn) {
-    throw new Error('scrollVertical can only be called after table was drawn to DOM');
-  }
-
-  var instance = this.instance
-    , newOffset
-    , offset = instance.getSetting('offsetRow')
-    , fixedCount = instance.getSetting('fixedRowsTop')
-    , total = instance.getSetting('totalRows')
-    , maxSize = instance.wtViewport.getViewportHeight();
-
-  if (total > 0 && !this.instance.wtTable.isLastRowFullyVisible()) {
-    newOffset = this.scrollLogicVertical(delta, offset, total, fixedCount, maxSize, function (row) {
-      if (row - offset < fixedCount && row - offset >= 0) {
-        return instance.getSetting('rowHeight', row - offset);
-      }
-      else {
-        return instance.getSetting('rowHeight', row);
-      }
-    });
-
-  } else {
-    newOffset = 0;
-  }
-
-
-  if (newOffset !== offset) {
-    this.instance.wtScrollbars.vertical.scrollTo(newOffset);
-  }
-  return instance;
-};
-
-WalkontableScroll.prototype.scrollHorizontal = function (delta) {
-  if (!this.instance.drawn) {
-    throw new Error('scrollHorizontal can only be called after table was drawn to DOM');
-  }
-
-  var instance = this.instance
-    , newOffset
-    , offset = instance.getSetting('offsetColumn')
-    , fixedCount = instance.getSetting('fixedColumnsLeft')
-    , total = instance.getSetting('totalColumns')
-    , maxSize = instance.wtViewport.getViewportWidth();
-
-  if (total > 0) {
-    newOffset = this.scrollLogicHorizontal(delta, offset, total, fixedCount, maxSize, function (col) {
-      if (col - offset < fixedCount && col - offset >= 0) {
-        return instance.getSetting('columnWidth', col - offset);
-      }
-      else {
-        return instance.getSetting('columnWidth', col);
-      }
-    });
-  }
-  else {
-    newOffset = 0;
-  }
-
-  if (newOffset !== offset) {
-    this.instance.wtScrollbars.horizontal.scrollTo(newOffset);
-  }
-  return instance;
-};
-
-WalkontableScroll.prototype.scrollLogicVertical = function (delta, offset, total, fixedCount, maxSize, cellSizeFn) {
-  var newOffset = offset + delta;
-
-  if (newOffset >= total - fixedCount) {
-    newOffset = total - fixedCount - 1;
-  }
-
-  if (newOffset < 0) {
-    newOffset = 0;
-  }
-
-  return newOffset;
-};
-
-WalkontableScroll.prototype.scrollLogicHorizontal = function (delta, offset, total, fixedCount, maxSize, cellSizeFn) {
-  var newOffset = offset + delta
-    , sum = 0
-    , col;
-
-  if (newOffset > fixedCount) {
-    if (newOffset >= total - fixedCount) {
-      newOffset = total - fixedCount - 1;
-    }
-
-    col = newOffset;
-    while (sum < maxSize && col < total) {
-      sum += cellSizeFn(col);
-      col++;
-    }
-
-    if (sum < maxSize) {
-      while (newOffset > 0) {
-        //if sum still less than available width, we cannot scroll that far (must move offset to the left)
-        sum += cellSizeFn(newOffset - 1);
-        if (sum < maxSize) {
-          newOffset--;
-        }
-        else {
-          break;
-        }
-      }
-    }
-  }
-  else if (newOffset < 0) {
-    newOffset = 0;
-  }
-
-  return newOffset;
-};
+import {
+  innerHeight,
+  innerWidth,
+  getScrollLeft,
+  getScrollTop,
+  offset,
+} from './../../../helpers/dom/element';
+import {rangeEach, rangeEachReverse} from './../../../helpers/number';
 
 /**
- * Scrolls viewport to a cell by minimum number of cells
- * @param {WalkontableCellCoords} coords
+ * @class WalkontableScroll
  */
-WalkontableScroll.prototype.scrollViewport = function (coords) {
-  if (!this.instance.drawn) {
-    return;
+class WalkontableScroll {
+  /**
+   * @param {Walkontable} wotInstance
+   */
+  constructor(wotInstance) {
+    this.wot = wotInstance;
+
+    // legacy support
+    this.instance = wotInstance;
   }
 
-  var offsetRow = this.instance.getSetting('offsetRow')
-    , offsetColumn = this.instance.getSetting('offsetColumn')
-    , totalRows = this.instance.getSetting('totalRows')
-    , totalColumns = this.instance.getSetting('totalColumns')
-    , fixedRowsTop = this.instance.getSetting('fixedRowsTop')
-    , fixedColumnsLeft = this.instance.getSetting('fixedColumnsLeft');
-
-
-  if (coords.row < 0 || coords.row > totalRows - 1) {
-    throw new Error('row ' + coords.row + ' does not exist');
-  }
-
-  if (coords.col < 0 || coords.col > totalColumns - 1) {
-    throw new Error('column ' + coords.col + ' does not exist');
-  }
-
-  var TD = this.instance.wtTable.getCell(coords);
-  if (typeof TD === 'object') {
-    this.scrollToRenderedCell(TD);
-  }  else if (coords.row >= this.instance.wtTable.getLastVisibleRow()) {
-
-    this.scrollVertical(coords.row - this.instance.wtTable.getLastVisibleRow());
-
-    if (coords.row == this.instance.wtTable.getLastVisibleRow() && this.instance.wtTable.getRowStrategy().isLastIncomplete()){
-      this.scrollViewport(coords)
+  /**
+   * Scrolls viewport to a cell by minimum number of cells
+   *
+   * @param {WalkontableCellCoords} coords
+   */
+  scrollViewport(coords) {
+    if (!this.wot.drawn) {
+      return;
     }
 
-  } else if (coords.row >= this.instance.getSetting('fixedColumnsLeft')){
-    this.scrollVertical(coords.row - this.instance.wtTable.getFirstVisibleRow());
-  }
-};
+    const {
+      topOverlay,
+      leftOverlay,
+      totalRows,
+      totalColumns,
+      fixedRowsTop,
+      fixedRowsBottom,
+      fixedColumnsLeft,
+      } = this._getVariables();
 
-WalkontableScroll.prototype.scrollToRenderedCell = function (TD) {
-  var cellOffset = Handsontable.Dom.offset(TD);
-  var cellWidth = Handsontable.Dom.outerWidth(TD);
-  var cellHeight = Handsontable.Dom.outerHeight(TD);
-  var workspaceOffset = Handsontable.Dom.offset(this.instance.wtTable.TABLE);
-  var viewportScrollPosition = {
-    left: this.instance.wtScrollbars.horizontal.getScrollPosition(),
-    top: this.instance.wtScrollbars.vertical.getScrollPosition()
-  };
-
-  var workspaceWidth = this.instance.wtViewport.getWorkspaceWidth();
-  var workspaceHeight = this.instance.wtViewport.getWorkspaceHeight();
-  var leftCloneWidth = Handsontable.Dom.outerWidth(this.instance.wtScrollbars.horizontal.clone.wtTable.TABLE);
-  var topCloneHeight = Handsontable.Dom.outerHeight(this.instance.wtScrollbars.vertical.clone.wtTable.TABLE);
-
-  if (this.instance.wtScrollbars.horizontal.scrollHandler !== window) {
-    workspaceOffset.left = 0;
-    cellOffset.left -= Handsontable.Dom.offset(this.instance.wtScrollbars.horizontal.scrollHandler).left;
-  }
-
-  if (this.instance.wtScrollbars.vertical.scrollHandler !== window) {
-    workspaceOffset.top = 0;
-    cellOffset.top = cellOffset.top - Handsontable.Dom.offset(this.instance.wtScrollbars.vertical.scrollHandler).top;
-  }
-
-  if (cellWidth < workspaceWidth) {
-    if (cellOffset.left < viewportScrollPosition.left + leftCloneWidth) {
-      this.instance.wtScrollbars.horizontal.setScrollPosition(cellOffset.left - leftCloneWidth);
+    if (coords.row < 0 || coords.row > Math.max(totalRows - 1, 0)) {
+      throw new Error(`row ${coords.row} does not exist`);
     }
-    else if (cellOffset.left + cellWidth > workspaceOffset.left + viewportScrollPosition.left + workspaceWidth) {
-      var delta = (cellOffset.left + cellWidth) - (workspaceOffset.left + viewportScrollPosition.left + workspaceWidth);
-      this.instance.wtScrollbars.horizontal.setScrollPosition(viewportScrollPosition.left + delta);
+
+    if (coords.col < 0 || coords.col > Math.max(totalColumns - 1, 0)) {
+      throw new Error(`column ${coords.col} does not exist`);
+    }
+
+    if (coords.row >= fixedRowsTop && coords.row < this.getFirstVisibleRow()) {
+      topOverlay.scrollTo(coords.row);
+
+    } else if (coords.row > this.getLastVisibleRow() && coords.row < totalRows - fixedRowsBottom) {
+      topOverlay.scrollTo(coords.row, true);
+    }
+
+    if (coords.col >= fixedColumnsLeft && coords.col < this.getFirstVisibleColumn()) {
+      leftOverlay.scrollTo(coords.col);
+
+    } else if (coords.col > this.getLastVisibleColumn()) {
+      leftOverlay.scrollTo(coords.col, true);
     }
   }
 
-  if (cellHeight < workspaceHeight) {
-    if (cellOffset.top < viewportScrollPosition.top + topCloneHeight) {
-      this.instance.wtScrollbars.vertical.setScrollPosition(cellOffset.top - topCloneHeight);
-      this.instance.wtScrollbars.vertical.onScroll();
+  /**
+   * Get first visible row based on virtual dom and how table is visible in browser window viewport.
+   *
+   * @returns {Number}
+   */
+  getFirstVisibleRow() {
+    const {
+      topOverlay,
+      wtTable,
+      wtViewport,
+      totalRows,
+      fixedRowsTop,
+      } = this._getVariables();
+
+    let firstVisibleRow = wtTable.getFirstVisibleRow();
+
+    if (topOverlay.mainTableScrollableElement === window) {
+      const rootElementOffset = offset(wtTable.wtRootElement);
+      const totalTableHeight = innerHeight(wtTable.hider);
+      const windowHeight = innerHeight(window);
+      const windowScrollTop = getScrollTop(window);
+
+      // Only calculate firstVisibleRow when table didn't filled (from up) whole viewport space
+      if (rootElementOffset.top + totalTableHeight - windowHeight <= windowScrollTop) {
+        let rowsHeight = wtViewport.getColumnHeaderHeight();
+
+        rowsHeight += topOverlay.sumCellSizes(0, fixedRowsTop);
+
+        rangeEachReverse(totalRows, 1, (row) => {
+          rowsHeight += topOverlay.sumCellSizes(row - 1, row);
+
+          if (rootElementOffset.top + totalTableHeight - rowsHeight <= windowScrollTop) {
+            // Return physical row + 1
+            firstVisibleRow = row;
+
+            return false;
+          }
+        });
+      }
     }
-    else if (cellOffset.top + cellHeight > viewportScrollPosition.top + workspaceHeight) {
-      this.instance.wtScrollbars.vertical.setScrollPosition(cellOffset.top - workspaceHeight + cellHeight);
-      this.instance.wtScrollbars.vertical.onScroll();
-    }
+
+    return firstVisibleRow;
   }
 
-};
+  /**
+   * Get last visible row based on virtual dom and how table is visible in browser window viewport.
+   *
+   * @returns {Number}
+   */
+  getLastVisibleRow() {
+    const {
+      topOverlay,
+      wtTable,
+      wtViewport,
+      totalRows,
+      } = this._getVariables();
+
+    let lastVisibleRow = wtTable.getLastVisibleRow();
+
+    if (topOverlay.mainTableScrollableElement === window) {
+      const rootElementOffset = offset(wtTable.wtRootElement);
+      const windowHeight = innerHeight(window);
+      const windowScrollTop = getScrollTop(window);
+
+      // Only calculate lastVisibleRow when table didn't filled (from bottom) whole viewport space
+      if (rootElementOffset.top > windowScrollTop) {
+        let rowsHeight = wtViewport.getColumnHeaderHeight();
+
+        rangeEach(1, totalRows, (row) => {
+          rowsHeight += topOverlay.sumCellSizes(row - 1, row);
+
+          if (rootElementOffset.top + rowsHeight - windowScrollTop >= windowHeight) {
+            // Return physical row - 1 (-2 because rangeEach gives row index + 1 - sumCellSizes requirements)
+            lastVisibleRow = row - 2;
+
+            return false;
+          }
+        });
+      }
+    }
+
+    return lastVisibleRow;
+  }
+
+  /**
+   * Get first visible column based on virtual dom and how table is visible in browser window viewport.
+   *
+   * @returns {Number}
+   */
+  getFirstVisibleColumn() {
+    const {
+      leftOverlay,
+      wtTable,
+      wtViewport,
+      totalColumns,
+      fixedColumnsLeft,
+      } = this._getVariables();
+
+    let firstVisibleColumn = wtTable.getFirstVisibleColumn();
+
+    if (leftOverlay.mainTableScrollableElement === window) {
+      const rootElementOffset = offset(wtTable.wtRootElement);
+      const totalTableWidth = innerWidth(wtTable.hider);
+      const windowWidth = innerWidth(window);
+      const windowScrollLeft = getScrollLeft(window);
+
+      // Only calculate firstVisibleColumn when table didn't filled (from left) whole viewport space
+      if (rootElementOffset.left + totalTableWidth - windowWidth <= windowScrollLeft) {
+        let columnsWidth = wtViewport.getRowHeaderWidth();
+
+        rangeEachReverse(totalColumns, 1, (column) => {
+          columnsWidth += leftOverlay.sumCellSizes(column - 1, column);
+
+          if (rootElementOffset.left + totalTableWidth - columnsWidth <= windowScrollLeft) {
+            // Return physical column + 1
+            firstVisibleColumn = column;
+
+            return false;
+          }
+        });
+      }
+    }
+
+    return firstVisibleColumn;
+  }
+
+  /**
+   * Get last visible column based on virtual dom and how table is visible in browser window viewport.
+   *
+   * @returns {Number}
+   */
+  getLastVisibleColumn() {
+    const {
+      leftOverlay,
+      wtTable,
+      wtViewport,
+      totalColumns,
+      } = this._getVariables();
+
+    let lastVisibleColumn = wtTable.getLastVisibleColumn();
+
+    if (leftOverlay.mainTableScrollableElement === window) {
+      const rootElementOffset = offset(wtTable.wtRootElement);
+      const windowWidth = innerWidth(window);
+      const windowScrollLeft = getScrollLeft(window);
+
+      // Only calculate lastVisibleColumn when table didn't filled (from right) whole viewport space
+      if (rootElementOffset.left > windowScrollLeft) {
+        let columnsWidth = wtViewport.getRowHeaderWidth();
+
+        rangeEach(1, totalColumns, (column) => {
+          columnsWidth += leftOverlay.sumCellSizes(column - 1, column);
+
+          if (rootElementOffset.left + columnsWidth - windowScrollLeft >= windowWidth) {
+            // Return physical column - 1 (-2 because rangeEach gives column index + 1 - sumCellSizes requirements)
+            lastVisibleColumn = column - 2;
+
+            return false;
+          }
+        });
+      }
+    }
+
+    return lastVisibleColumn;
+  }
+
+  /**
+   * Returns collection of variables used to rows and columns visibility calculations.
+   *
+   * @returns {Object}
+   * @private
+   */
+  _getVariables() {
+    const wot = this.wot;
+    const topOverlay = wot.wtOverlays.topOverlay;
+    const leftOverlay = wot.wtOverlays.leftOverlay;
+    const wtTable = wot.wtTable;
+    const wtViewport = wot.wtViewport;
+    const totalRows = wot.getSetting('totalRows');
+    const totalColumns = wot.getSetting('totalColumns');
+    const fixedRowsTop = wot.getSetting('fixedRowsTop');
+    const fixedRowsBottom = wot.getSetting('fixedRowsBottom');
+    const fixedColumnsLeft = wot.getSetting('fixedColumnsLeft');
+
+    return {
+      topOverlay,
+      leftOverlay,
+      wtTable,
+      wtViewport,
+      totalRows,
+      totalColumns,
+      fixedRowsTop,
+      fixedRowsBottom,
+      fixedColumnsLeft
+    };
+  }
+}
+
+export {WalkontableScroll};
+
+window.WalkontableScroll = WalkontableScroll;

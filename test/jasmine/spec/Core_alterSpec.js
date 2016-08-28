@@ -67,7 +67,7 @@ describe('Core_alter', function () {
       });
       alter('remove_row');
 
-      expect(onBeforeRemoveRow).toHaveBeenCalledWith(countRows(), 1, undefined, undefined, undefined);
+      expect(onBeforeRemoveRow).toHaveBeenCalledWith(countRows(), 1, [2], undefined, undefined, undefined);
     });
 
     it('should not remove row if removing has been canceled by beforeRemoveRow event handler', function () {
@@ -266,6 +266,43 @@ describe('Core_alter', function () {
 
       expect(output).toEqual([1, 2]);
     });
+
+    it("should decrement the number of fixed rows, if a fix row is removed", function () {
+      var hot = handsontable({
+        startCols: 1,
+        startRows: 3,
+        fixedRowsTop: 4
+      });
+
+      alter('remove_row', 1, 1);
+      expect(hot.getSettings().fixedRowsTop).toEqual(3);
+      alter('remove_row', 1, 2);
+      expect(hot.getSettings().fixedRowsTop).toEqual(1);
+    });
+
+    it("should shift the cell meta according to the new row layout", function () {
+      var hot = handsontable({
+        startCols: 3,
+        startRows: 4
+      });
+
+      setCellMeta(2, 1, 'className', 'test');
+      alter('remove_row', 1, 1);
+
+      expect(getCellMeta(1, 1).className).toEqual('test');
+    });
+
+    it("should shift the cell meta according to the new rows (>1) layout", function () {
+      var hot = handsontable({
+        startCols: 3,
+        startRows: 4
+      });
+
+      setCellMeta(2, 1, 'className', 'test');
+      alter('remove_row', 0, 2);
+
+      expect(getCellMeta(0, 1).className).toEqual('test');
+    });
   });
 
   describe("remove column", function () {
@@ -344,7 +381,7 @@ describe('Core_alter', function () {
       });
       alter('remove_col');
 
-      expect(onBeforeRemoveCol).toHaveBeenCalledWith(countCols(), 1, undefined, undefined, undefined);
+      expect(onBeforeRemoveCol).toHaveBeenCalledWith(countCols(), 1, [4], undefined, undefined, undefined);
     });
 
     it('should not remove column if removing has been canceled by beforeRemoveCol event handler', function () {
@@ -453,6 +490,42 @@ describe('Core_alter', function () {
 
     });
 
+    it("should decrement the number of fixed columns, if a fix column is removed", function () {
+      var hot = handsontable({
+        startCols: 1,
+        startRows: 3,
+        fixedColumnsLeft: 4
+      });
+
+      alter('remove_col', 1, 1);
+      expect(hot.getSettings().fixedColumnsLeft).toEqual(3);
+      alter('remove_col', 1, 2);
+      expect(hot.getSettings().fixedColumnsLeft).toEqual(1);
+    });
+
+    it("should shift the cell meta according to the new column layout", function () {
+      var hot = handsontable({
+        startCols: 4,
+        startRows: 3
+      });
+
+      setCellMeta(1, 2, 'className', 'test');
+      alter('remove_col', 1, 1);
+
+      expect(getCellMeta(1, 1).className).toEqual('test');
+    });
+
+    it("should shift the cell meta according to the new columns (>1) layout", function () {
+      var hot = handsontable({
+        startCols: 4,
+        startRows: 3
+      });
+
+      setCellMeta(1, 2, 'className', 'test');
+      alter('remove_col', 0, 2);
+
+      expect(getCellMeta(1, 0).className).toEqual('test');
+    });
   });
 
   describe("insert row", function () {
@@ -574,6 +647,48 @@ describe('Core_alter', function () {
       alter('insert_row', 3);
 
       expect(output).toEqual(3);
+    });
+
+    it("should keep the single-cell selection in the same position as before inserting the row", function () {
+      handsontable({
+        minRows: 5,
+        data: [
+          ["a", "b", "c", "d", "e", "f", "g", "h"],
+          ["a", "b", "c", "d", "e", "f", "g", "h"],
+          ["a", "b", "c", "d", "e", "f", "g", "h"]
+        ]
+      });
+
+      selectCell(2,2);
+      alter('insert_row', 2);
+
+      var selected = getSelected();
+      expect(selected[0]).toEqual(3);
+      expect(selected[2]).toEqual(3);
+    });
+
+    it("should shift the cell meta according to the new row layout", function () {
+      var hot = handsontable({
+        startCols: 4,
+        startRows: 3
+      });
+
+      setCellMeta(2, 1, 'className', 'test');
+      alter('insert_row', 1, 1);
+
+      expect(getCellMeta(3, 1).className).toEqual('test');
+    });
+
+    it("should shift the cell meta according to the new rows (>1) layout", function () {
+      var hot = handsontable({
+        startCols: 4,
+        startRows: 3
+      });
+
+      setCellMeta(2, 1, 'className', 'test');
+      alter('insert_row', 0, 3);
+
+      expect(getCellMeta(5, 1).className).toEqual('test');
     });
   });
 
@@ -714,6 +829,48 @@ describe('Core_alter', function () {
 
       expect(getColHeader()).toEqual(['Header0', 'B', 'Header1', 'Header2']);
 
+    });
+
+    it("should stretch the table after adding another column (if stretching is set to 'all')", function () {
+      this.$container.css({
+        "width": 500
+      });
+
+      var hot = handsontable({
+        startCols: 5,
+        startRows: 10,
+        stretchH: 'all'
+      });
+
+      expect(Handsontable.Dom.outerWidth(hot.view.TBODY)).toEqual(500);
+      alter('insert_col', null, 1);
+      expect(Handsontable.Dom.outerWidth(hot.view.TBODY)).toEqual(500);
+      alter('insert_col', null, 1);
+      expect(Handsontable.Dom.outerWidth(hot.view.TBODY)).toEqual(500);
+    });
+
+    it("should shift the cell meta according to the new column layout", function () {
+      var hot = handsontable({
+        startCols: 4,
+        startRows: 3
+      });
+
+      setCellMeta(1, 2, 'className', 'test');
+      alter('insert_col', 1, 1);
+
+      expect(getCellMeta(1, 3).className).toEqual('test');
+    });
+
+    it("should shift the cell meta according to the new columns (>1) layout", function () {
+      var hot = handsontable({
+        startCols: 4,
+        startRows: 3
+      });
+
+      setCellMeta(1, 2, 'className', 'test');
+      alter('insert_col', 0, 3);
+
+      expect(getCellMeta(1, 5).className).toEqual('test');
     });
   });
 

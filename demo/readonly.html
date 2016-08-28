@@ -7,9 +7,14 @@
   <!--
   Loading Handsontable (full distribution that includes all dependencies apart from jQuery)
   -->
-  <script data-jsfiddle="common" src="../lib/jquery.min.js"></script>
-  <script data-jsfiddle="common" src="../dist/jquery.handsontable.full.js"></script>
-  <link data-jsfiddle="common" rel="stylesheet" media="screen" href="../dist/jquery.handsontable.full.css">
+  <link data-jsfiddle="common" rel="stylesheet" media="screen" href="../dist/handsontable.css">
+  <link data-jsfiddle="common" rel="stylesheet" media="screen" href="../dist/pikaday/pikaday.css">
+  <script data-jsfiddle="common" src="../dist/pikaday/pikaday.js"></script>
+  <script data-jsfiddle="common" src="../dist/moment/moment.js"></script>
+  <script data-jsfiddle="common" src="../dist/zeroclipboard/ZeroClipboard.js"></script>
+  <script data-jsfiddle="common" src="../dist/numbro/numbro.js"></script>
+  <script data-jsfiddle="common" src="../dist/numbro/languages.js"></script>
+  <script data-jsfiddle="common" src="../dist/handsontable.js"></script>
 
   <!--
   Loading demo dependencies. They are used here only to enhance the examples on this page
@@ -39,20 +44,12 @@
   <script src="js/ga.js"></script>
 
   <script data-jsfiddle="common">
-    $(document).ready(function () {
-      $('button[name=dumpToConsole]').on('click', function () {
-        var dump = $(this).data('dump');
-        var $container = $(dump);
-        console.log('data of ' + dump, $container.handsontable('getData'));
-      });
-    });
-
     function getCarData() {
       return [
-        {car: "Nissan", year: 2009, chassis: "black", bumper: "black"},
-        {car: "Nissan", year: 2006, chassis: "blue", bumper: "blue"},
-        {car: "Chrysler", year: 2004, chassis: "yellow", bumper: "black"},
-        {car: "Volvo", year: 2012, chassis: "white", bumper: "gray"}
+        {car: 'Nissan', year: 2009, chassis: 'black', bumper: 'black'},
+        {car: 'Nissan', year: 2006, chassis: 'blue', bumper: 'blue'},
+        {car: 'Chrysler', year: 2004, chassis: 'yellow', bumper: 'black'},
+        {car: 'Volvo', year: 2012, chassis: 'white', bumper: 'gray'}
       ];
     }
   </script>
@@ -102,7 +99,7 @@
           <div id="example1"></div>
 
           <p>
-            <button name="dump" data-dump="#example1" title="Prints current data source to Firebug/Chrome Dev Tools">
+            <button name="dump" data-dump="#example1" data-instance="hot1" title="Prints current data source to Firebug/Chrome Dev Tools">
               Dump data to console
             </button>
           </p>
@@ -116,28 +113,29 @@
           </div>
 
           <script data-jsfiddle="example1">
-            $(document).ready(function () {
-              $("#example1").handsontable({
+            var container1 = document.getElementById('example1'),
+              hot1;
+
+            hot1 = new Handsontable(container1, {
                 data: getCarData(),
                 minSpareRows: 1,
-                colHeaders: ["Car", "Year", "Chassis color", "Bumper color"],
+                colHeaders: ['Car', 'Year', 'Chassis color', 'Bumper color'],
                 columns: [
                   {
-                    data: "car",
+                    data: 'car',
                     readOnly: true
                   },
                   {
-                    data: "year"
+                    data: 'year'
                   },
                   {
-                    data: "chassis"
+                    data: 'chassis'
                   },
                   {
-                    data: "bumper"
+                    data: 'bumper'
                   }
                 ]
               });
-            });
           </script>
         </div>
       </div>
@@ -158,7 +156,7 @@
           <div id="example2"></div>
 
           <p>
-            <button name="dump" data-dump="#example2" title="Prints current data source to Firebug/Chrome Dev Tools">
+            <button name="dump" data-dump="#example2" data-instance="hot2" title="Prints current data source to Firebug/Chrome Dev Tools">
               Dump data to console
             </button>
           </p>
@@ -172,27 +170,32 @@
           </div>
 
           <script data-jsfiddle="example2">
-            $(document).ready(function () {
-              $("#example2").handsontable({
-                data: getCarData(),
-                minSpareRows: 1,
-                colHeaders: ["Car", "Year", "Chassis color", "Bumper color"],
-                cells: function (row, col, prop) {
-                  var cellProperties = {};
-                  if ($("#example2").handsontable('getData')[row][prop] === 'Nissan') {
-                    cellProperties.readOnly = true;
-                  }
-                  return cellProperties;
-                }
-              });
+            var container2 = document.getElementById('example2'),
+              hot2;
+
+            hot2 = new Handsontable(container2, {
+              data: getCarData(),
+              minSpareRows: 1,
+              colHeaders: ['Car', 'Year', 'Chassis color', 'Bumper color']
+
             });
+            hot2.updateSettings({
+              cells: function (row, col, prop) {
+                var cellProperties = {};
+
+                if (hot2.getData()[row][prop] === 'Nissan') {
+                  cellProperties.readOnly = true;
+                }
+
+                return cellProperties;
+              }
+            })
           </script>
         </div>
       </div>
     </div>
 
-        <div class="footer-text">Handsontable &copy; 2012-2014 Marcin Warpechowski and contributors.<br> Code and documentation
-          licensed under the The MIT License.
+        <div class="footer-text">
         </div>
       </div>
 

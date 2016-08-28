@@ -1,396 +1,580 @@
-function WalkontableTable(instance, table) {
-  //reference to instance
-  this.instance = instance;
-  this.TABLE = table;
-  Handsontable.Dom.removeTextNodes(this.TABLE);
-
-  //wtSpreader
-  var parent = this.TABLE.parentNode;
-  if (!parent || parent.nodeType !== 1 || !Handsontable.Dom.hasClass(parent, 'wtHolder')) {
-    var spreader = document.createElement('DIV');
-    spreader.className = 'wtSpreader';
-    if (parent) {
-      parent.insertBefore(spreader, this.TABLE); //if TABLE is detached (e.g. in Jasmine test), it has no parentNode so we cannot attach holder to it
-    }
-    spreader.appendChild(this.TABLE);
-  }
-  this.spreader = this.TABLE.parentNode;
-
-  //wtHider
-  parent = this.spreader.parentNode;
-  if (!parent || parent.nodeType !== 1 || !Handsontable.Dom.hasClass(parent, 'wtHolder')) {
-    var hider = document.createElement('DIV');
-    hider.className = 'wtHider';
-    if (parent) {
-      parent.insertBefore(hider, this.spreader); //if TABLE is detached (e.g. in Jasmine test), it has no parentNode so we cannot attach holder to it
-    }
-    hider.appendChild(this.spreader);
-  }
-  this.hider = this.spreader.parentNode;
-  this.hiderStyle = this.hider.style;
-  this.hiderStyle.position = 'relative';
-
-  //wtHolder
-  parent = this.hider.parentNode;
-  if (!parent || parent.nodeType !== 1 || !Handsontable.Dom.hasClass(parent, 'wtHolder')) {
-    var holder = document.createElement('DIV');
-    holder.style.position = 'relative';
-    holder.className = 'wtHolder';
-
-    if(!instance.cloneSource) {
-      holder.className += ' ht_master';
-    }
-
-    if (parent) {
-      parent.insertBefore(holder, this.hider); //if TABLE is detached (e.g. in Jasmine test), it has no parentNode so we cannot attach holder to it
-    }
-    holder.appendChild(this.hider);
-  }
-  this.holder = this.hider.parentNode;
-
-  //bootstrap from settings
-  this.TBODY = this.TABLE.getElementsByTagName('TBODY')[0];
-  if (!this.TBODY) {
-    this.TBODY = document.createElement('TBODY');
-    this.TABLE.appendChild(this.TBODY);
-  }
-  this.THEAD = this.TABLE.getElementsByTagName('THEAD')[0];
-  if (!this.THEAD) {
-    this.THEAD = document.createElement('THEAD');
-    this.TABLE.insertBefore(this.THEAD, this.TBODY);
-  }
-  this.COLGROUP = this.TABLE.getElementsByTagName('COLGROUP')[0];
-  if (!this.COLGROUP) {
-    this.COLGROUP = document.createElement('COLGROUP');
-    this.TABLE.insertBefore(this.COLGROUP, this.THEAD);
-  }
-
-  if (this.instance.getSetting('columnHeaders').length) {
-    if (!this.THEAD.childNodes.length) {
-      var TR = document.createElement('TR');
-      this.THEAD.appendChild(TR);
-    }
-  }
-
-  this.colgroupChildrenLength = this.COLGROUP.childNodes.length;
-  this.theadChildrenLength = this.THEAD.firstChild ? this.THEAD.firstChild.childNodes.length : 0;
-  this.tbodyChildrenLength = this.TBODY.childNodes.length;
-
-  this.oldCellCache = new WalkontableClassNameCache();
-  this.currentCellCache = new WalkontableClassNameCache();
-
-  this.rowFilter = null;
-  this.columnFilter = null;
-
-  this.columnWidthCache = [];
-}
-
-WalkontableTable.prototype.getRowStrategy = function () {
-  return this.isWorkingOnClone() ? this.instance.cloneSource.wtTable.rowStrategy : this.rowStrategy;
-};
-
-WalkontableTable.prototype.getColumnStrategy = function () {
-  return this.isWorkingOnClone() ? this.instance.cloneSource.wtTable.columnStrategy : this.columnStrategy;
-};
-
-WalkontableTable.prototype.isWorkingOnClone = function () {
-  return !!this.instance.cloneSource;
-};
-
-WalkontableTable.prototype.refreshHiderDimensions = function () {
-  var spreaderStyle = this.spreader.style;
-  spreaderStyle.position = 'relative';
-  spreaderStyle.width = 'auto';
-  spreaderStyle.height = 'auto';
-};
-
-WalkontableTable.prototype.draw = function (selectionsOnly) {
-  if (!selectionsOnly) {
-    if (this.isWorkingOnClone()) {
-      this.tableOffset = this.instance.cloneSource.wtTable.tableOffset;
-    }
-    else {
-      this.holderOffset = Handsontable.Dom.offset(this.holder);
-      this.tableOffset = Handsontable.Dom.offset(this.TABLE);
-      this.instance.wtScrollbars.vertical.readSettings();
-      this.instance.wtScrollbars.horizontal.readSettings();
-      this.instance.wtViewport.resetSettings();
-    }
-    var offsetRow;
-    if (this.instance.cloneOverlay instanceof WalkontableDebugOverlay) {
-      offsetRow = 0;
-    }
-    else {
-      offsetRow = this.instance.wtSettings.settings.offsetRow;
-    }
-    this.rowFilter = new WalkontableRowFilter(
-      offsetRow,
-      this.instance.getSetting('totalRows'),
-      this.instance.getSetting('fixedRowsTop'),
-      this.instance.getSetting('columnHeaders').length
-    );
-    this.columnFilter = new WalkontableColumnFilter(
-      this.instance.wtSettings.settings.offsetColumn,
-      this.instance.getSetting('totalColumns'),
-      this.instance.getSetting('fixedColumnsLeft'),
-      this.instance.getSetting('rowHeaders').length
-    );
-    this._doDraw();
-  }
-  else {
-    this.instance.wtScrollbars && this.instance.wtScrollbars.refresh(true);
-  }
-
-  this.refreshPositions(selectionsOnly);
-
-  if (!selectionsOnly) {
-    if (!this.isWorkingOnClone()) {
-      this.instance.wtScrollbars.vertical.resetFixedPosition();
-      this.instance.wtScrollbars.horizontal.resetFixedPosition();
-      this.instance.wtScrollbars.corner.resetFixedPosition();
-      this.instance.wtScrollbars.debug && this.instance.wtScrollbars.debug.resetFixedPosition();
-    }
-  }
-
-  this.instance.drawn = true;
-  return this;
-};
-
-WalkontableTable.prototype._doDraw = function () {
-  var wtRenderer = new WalkontableTableRenderer(this);
-  wtRenderer.render();
-};
-
-WalkontableTable.prototype.refreshPositions = function (selectionsOnly) {
-  this.refreshHiderDimensions();
-  this.refreshSelections(selectionsOnly);
-};
-
-WalkontableTable.prototype.refreshSelections = function (selectionsOnly) {
-  var vr
-    , r
-    , vc
-    , c
-    , s
-    , slen
-    , classNames = []
-    , visibleRows = this.getRowStrategy().countVisible()
-    , renderedCells = this.getColumnStrategy().cellCount;
-
-  this.oldCellCache = this.currentCellCache;
-  this.currentCellCache = new WalkontableClassNameCache();
-
-  if (this.instance.selections) {
-    for (r in this.instance.selections) {
-      if (this.instance.selections.hasOwnProperty(r)) {
-
-        this.instance.selections[r].draw();
-
-        if (this.instance.selections[r].settings.className) {
-          classNames.push(this.instance.selections[r].settings.className);
-        }
-        if (this.instance.selections[r].settings.highlightRowClassName) {
-          classNames.push(this.instance.selections[r].settings.highlightRowClassName);
-        }
-        if (this.instance.selections[r].settings.highlightColumnClassName) {
-          classNames.push(this.instance.selections[r].settings.highlightColumnClassName);
-        }
-      }
-    }
-  }
-
-  slen = classNames.length;
-
-  for (vr = 0; vr < visibleRows; vr++) {
-    for (vc = 0; vc < renderedCells; vc++) {
-      r = this.rowFilter.visibleToSource(vr);
-      c = this.columnFilter.visibleToSource(vc);
-      for (s = 0; s < slen; s++) {
-        var cell;
-        if (this.currentCellCache.test(vr, vc, classNames[s])) {
-          cell = this.getCell(new WalkontableCellCoords(r, c));
-          if (typeof cell == 'object' ) Handsontable.Dom.addClass(cell, classNames[s]);
-        }
-        else if (selectionsOnly && this.oldCellCache.test(vr, vc, classNames[s])) {
-          cell = this.getCell(new WalkontableCellCoords(r, c));
-          if (typeof cell == 'object' ) Handsontable.Dom.removeClass(cell, classNames[s]);
-
-        }
-      }
-    }
-  }
-};
+import {
+    getStyle,
+    getTrimmingContainer,
+    hasClass,
+    index,
+    offset,
+    removeClass,
+    removeTextNodes,
+    overlayContainsElement,
+    closest
+} from './../../../helpers/dom/element';
+import {WalkontableCellCoords} from './cell/coords';
+import {WalkontableCellRange} from './cell/range';
+import {WalkontableColumnFilter} from './filter/column';
+import {WalkontableRowFilter} from './filter/row';
+import {WalkontableTableRenderer} from './tableRenderer';
 
 /**
- * getCell
- * @param {WalkontableCellCoords} coords
- * @return {Object} HTMLElement on success or {Number} one of the exit codes on error:
- *  -1 row before viewport
- *  -2 row after viewport
  *
  */
-WalkontableTable.prototype.getCell = function (coords) {
-  if (this.isRowBeforeViewport(coords.row)) {
-    return -1; //row before viewport
+class WalkontableTable {
+  /**
+   * @param {Walkontable} wotInstance
+   * @param {HTMLTableElement} table
+   */
+  constructor(wotInstance, table) {
+    this.wot = wotInstance;
+
+    // legacy support
+    this.instance = this.wot;
+    this.TABLE = table;
+    this.TBODY = null;
+    this.THEAD = null;
+    this.COLGROUP = null;
+    this.tableOffset = 0;
+    this.holderOffset = 0;
+
+    removeTextNodes(this.TABLE);
+
+    this.spreader = this.createSpreader(this.TABLE);
+    this.hider = this.createHider(this.spreader);
+    this.holder = this.createHolder(this.hider);
+
+    this.wtRootElement = this.holder.parentNode;
+    this.alignOverlaysWithTrimmingContainer();
+    this.fixTableDomTree();
+
+    this.colgroupChildrenLength = this.COLGROUP.childNodes.length;
+    this.theadChildrenLength = this.THEAD.firstChild ? this.THEAD.firstChild.childNodes.length : 0;
+    this.tbodyChildrenLength = this.TBODY.childNodes.length;
+
+    this.rowFilter = null;
+    this.columnFilter = null;
   }
-  else if (this.isRowAfterViewport(coords.row)) {
-    return -2; //row after viewport
+
+  /**
+   *
+   */
+  fixTableDomTree() {
+    this.TBODY = this.TABLE.querySelector('tbody');
+
+    if (!this.TBODY) {
+      this.TBODY = document.createElement('tbody');
+      this.TABLE.appendChild(this.TBODY);
+    }
+    this.THEAD = this.TABLE.querySelector('thead');
+
+    if (!this.THEAD) {
+      this.THEAD = document.createElement('thead');
+      this.TABLE.insertBefore(this.THEAD, this.TBODY);
+    }
+    this.COLGROUP = this.TABLE.querySelector('colgroup');
+
+    if (!this.COLGROUP) {
+      this.COLGROUP = document.createElement('colgroup');
+      this.TABLE.insertBefore(this.COLGROUP, this.THEAD);
+    }
+
+    if (this.wot.getSetting('columnHeaders').length && !this.THEAD.childNodes.length) {
+      this.THEAD.appendChild(document.createElement('TR'));
+    }
   }
 
-  var TR = this.TBODY.childNodes[this.rowFilter.sourceToVisible(coords.row)];
+  /**
+   * @param table
+   * @returns {HTMLElement}
+   */
+  createSpreader(table) {
+    const parent = table.parentNode;
+    let spreader;
 
-  if (TR) {
-    return TR.childNodes[this.columnFilter.sourceColumnToVisibleRowHeadedColumn(coords.col)];
+    if (!parent || parent.nodeType !== 1 || !hasClass(parent, 'wtHolder')) {
+      spreader = document.createElement('div');
+      spreader.className = 'wtSpreader';
+
+      if (parent) {
+        // if TABLE is detached (e.g. in Jasmine test), it has no parentNode so we cannot attach holder to it
+        parent.insertBefore(spreader, table);
+      }
+      spreader.appendChild(table);
+    }
+    spreader.style.position = 'relative';
+
+    return spreader;
   }
-};
 
-/**
- * Returns cell coords object for a given TD
- * @param TD
- * @returns {WalkontableCellCoords}
- */
-WalkontableTable.prototype.getCoords = function (TD) {
-  var TR = TD.parentNode;
-  var row = Handsontable.Dom.index(TR);
-  if (TR.parentNode === this.THEAD) {
-    row = this.rowFilter.visibleColHeadedColumnToSourceColumn(row);
+  /**
+   * @param spreader
+   * @returns {HTMLElement}
+   */
+  createHider(spreader) {
+    const parent = spreader.parentNode;
+    let hider;
+
+    if (!parent || parent.nodeType !== 1 || !hasClass(parent, 'wtHolder')) {
+      hider = document.createElement('div');
+      hider.className = 'wtHider';
+
+      if (parent) {
+        // if TABLE is detached (e.g. in Jasmine test), it has no parentNode so we cannot attach holder to it
+        parent.insertBefore(hider, spreader);
+      }
+      hider.appendChild(spreader);
+    }
+
+    return hider;
   }
-  else {
-    row = this.rowFilter.visibleToSource(row);
+
+  /**
+   *
+   * @param hider
+   * @returns {HTMLElement}
+   */
+  createHolder(hider) {
+    const parent = hider.parentNode;
+    let holder;
+
+    if (!parent || parent.nodeType !== 1 || !hasClass(parent, 'wtHolder')) {
+      holder = document.createElement('div');
+      holder.style.position = 'relative';
+      holder.className = 'wtHolder';
+
+      if (parent) {
+        // if TABLE is detached (e.g. in Jasmine test), it has no parentNode so we cannot attach holder to it
+        parent.insertBefore(holder, hider);
+      }
+      if (!this.isWorkingOnClone()) {
+        holder.parentNode.className += 'ht_master handsontable';
+      }
+      holder.appendChild(hider);
+    }
+
+    return holder;
   }
 
-  return new WalkontableCellCoords(
-    row,
-    this.columnFilter.visibleRowHeadedColumnToSourceColumn(TD.cellIndex)
-  );
-};
+  alignOverlaysWithTrimmingContainer() {
+    const trimmingElement = getTrimmingContainer(this.wtRootElement);
 
-//returns -1 if no row is visible
-WalkontableTable.prototype.getFirstVisibleRow = function () {
-  return this.rowFilter.visibleToSource(0 + this.rowFilter.fixedCount);
-};
+    if (!this.isWorkingOnClone()) {
+      this.holder.parentNode.style.position = 'relative';
 
-//returns -1 if no column is visible
-WalkontableTable.prototype.getFirstVisibleColumn = function () {
+      if (trimmingElement === window) {
+        let preventOverflow = this.wot.getSetting('preventOverflow');
 
-  if (this.isWorkingOnClone()){
-    if (this.instance.cloneOverlay instanceof WalkontableHorizontalScrollbarNative || this.instance.cloneOverlay instanceof WalkontableCornerScrollbarNative){
-      return 0;
+        if (!preventOverflow) {
+          this.holder.style.overflow = 'visible';
+          this.wtRootElement.style.overflow = 'visible';
+        }
+      } else {
+        this.holder.style.width = getStyle(trimmingElement, 'width');
+        this.holder.style.height = getStyle(trimmingElement, 'height');
+        this.holder.style.overflow = '';
+      }
+    }
+  }
+
+  isWorkingOnClone() {
+    return !!this.wot.cloneSource;
+  }
+
+  /**
+   * Redraws the table
+   *
+   * @param fastDraw {Boolean} If TRUE, will try to avoid full redraw and only update the border positions. If FALSE or UNDEFINED, will perform a full redraw
+   * @returns {WalkontableTable}
+   */
+  draw(fastDraw) {
+    let totalRows = this.instance.getSetting('totalRows');
+
+    if (!this.isWorkingOnClone()) {
+      this.holderOffset = offset(this.holder);
+      fastDraw = this.wot.wtViewport.createRenderCalculators(fastDraw);
+    }
+
+    if (fastDraw) {
+      if (!this.isWorkingOnClone()) {
+        // in case we only scrolled without redraw, update visible rows information in oldRowsCalculator
+        this.wot.wtViewport.createVisibleCalculators();
+      }
+      if (this.wot.wtOverlays) {
+        this.wot.wtOverlays.refresh(true);
+      }
     } else {
-      return this.instance.cloneSource.wtTable.getFirstVisibleColumn();
+      if (this.isWorkingOnClone()) {
+        this.tableOffset = this.wot.cloneSource.wtTable.tableOffset;
+      } else {
+        this.tableOffset = offset(this.TABLE);
+      }
+      let startRow;
+
+      if (WalkontableOverlay.isOverlayTypeOf(this.wot.cloneOverlay, WalkontableOverlay.CLONE_DEBUG) ||
+          WalkontableOverlay.isOverlayTypeOf(this.wot.cloneOverlay, WalkontableOverlay.CLONE_TOP) ||
+          WalkontableOverlay.isOverlayTypeOf(this.wot.cloneOverlay, WalkontableOverlay.CLONE_TOP_LEFT_CORNER)) {
+        startRow = 0;
+      } else if (WalkontableOverlay.isOverlayTypeOf(this.instance.cloneOverlay, WalkontableOverlay.CLONE_BOTTOM) ||
+          WalkontableOverlay.isOverlayTypeOf(this.instance.cloneOverlay, WalkontableOverlay.CLONE_BOTTOM_LEFT_CORNER)) {
+        startRow = Math.max(totalRows - this.wot.getSetting('fixedRowsBottom'), 0);
+      } else {
+        startRow = this.wot.wtViewport.rowsRenderCalculator.startRow;
+      }
+      let startColumn;
+
+      if (WalkontableOverlay.isOverlayTypeOf(this.wot.cloneOverlay, WalkontableOverlay.CLONE_DEBUG) ||
+          WalkontableOverlay.isOverlayTypeOf(this.wot.cloneOverlay, WalkontableOverlay.CLONE_LEFT) ||
+          WalkontableOverlay.isOverlayTypeOf(this.wot.cloneOverlay, WalkontableOverlay.CLONE_TOP_LEFT_CORNER) ||
+          WalkontableOverlay.isOverlayTypeOf(this.wot.cloneOverlay, WalkontableOverlay.CLONE_BOTTOM_LEFT_CORNER)) {
+        startColumn = 0;
+      } else {
+        startColumn = this.wot.wtViewport.columnsRenderCalculator.startColumn;
+      }
+      this.rowFilter = new WalkontableRowFilter(startRow, totalRows, this.wot.getSetting('columnHeaders').length);
+      this.columnFilter = new WalkontableColumnFilter(startColumn, this.wot.getSetting('totalColumns'), this.wot.getSetting('rowHeaders').length);
+
+      this.alignOverlaysWithTrimmingContainer();
+      this._doDraw(); //creates calculator after draw
+    }
+    this.refreshSelections(fastDraw);
+
+    if (!this.isWorkingOnClone()) {
+      this.wot.wtOverlays.topOverlay.resetFixedPosition();
+
+      if (this.wot.wtOverlays.bottomOverlay.clone) {
+        this.wot.wtOverlays.bottomOverlay.resetFixedPosition();
+      }
+
+      this.wot.wtOverlays.leftOverlay.resetFixedPosition();
+
+      if (this.wot.wtOverlays.topLeftCornerOverlay) {
+        this.wot.wtOverlays.topLeftCornerOverlay.resetFixedPosition();
+      }
+
+      if (this.instance.wtOverlays.bottomLeftCornerOverlay && this.instance.wtOverlays.bottomLeftCornerOverlay.clone) {
+        this.wot.wtOverlays.bottomLeftCornerOverlay.resetFixedPosition();
+      }
+    }
+    this.wot.drawn = true;
+
+    return this;
+  }
+
+  _doDraw() {
+    const wtRenderer = new WalkontableTableRenderer(this);
+
+    wtRenderer.render();
+  }
+
+  removeClassFromCells(className) {
+    const nodes = this.TABLE.querySelectorAll('.' + className);
+
+    for (let i = 0, len = nodes.length; i < len; i++) {
+      removeClass(nodes[i], className);
     }
   }
 
-  var leftOffset = this.instance.wtScrollbars.horizontal.getScrollPosition();
-  var columnCount = this.getColumnStrategy().cellCount;
-  var firstTR = this.TBODY.firstChild;
+  refreshSelections(fastDraw) {
+    if (!this.wot.selections) {
+      return;
+    }
+    let len = this.wot.selections.length;
 
-  if (!firstTR){
-    return 0;
+    if (fastDraw) {
+      for (let i = 0; i < len; i++) {
+        // there was no rerender, so we need to remove classNames by ourselves
+        if (this.wot.selections[i].settings.className) {
+          this.removeClassFromCells(this.wot.selections[i].settings.className);
+        }
+        if (this.wot.selections[i].settings.highlightRowClassName) {
+          this.removeClassFromCells(this.wot.selections[i].settings.highlightRowClassName);
+        }
+        if (this.wot.selections[i].settings.highlightColumnClassName) {
+          this.removeClassFromCells(this.wot.selections[i].settings.highlightColumnClassName);
+        }
+      }
+    }
+    for (let i = 0; i < len; i++) {
+      this.wot.selections[i].draw(this.wot, fastDraw);
+    }
   }
 
-  for (var colIndex = 0; colIndex < columnCount; colIndex++){
-    leftOffset -= firstTR.childNodes[colIndex].offsetWidth;
+  /**
+   * Get cell element at coords.
+   *
+   * @param {WalkontableCellCoords} coords
+   * @returns {HTMLElement|Number} HTMLElement on success or Number one of the exit codes on error:
+   *  -1 row before viewport
+   *  -2 row after viewport
+   */
+  getCell(coords) {
+    if (this.isRowBeforeRenderedRows(coords.row)) {
+      // row before rendered rows
+      return -1;
 
-    if (leftOffset < 0){
-      return colIndex;
+    } else if (this.isRowAfterRenderedRows(coords.row)) {
+      // row after rendered rows
+      return -2;
+    }
+    const TR = this.TBODY.childNodes[this.rowFilter.sourceToRendered(coords.row)];
+
+    if (TR) {
+      return TR.childNodes[this.columnFilter.sourceColumnToVisibleRowHeadedColumn(coords.col)];
+    }
+  }
+
+  /**
+   * getColumnHeader
+   *
+   * @param {Number} col Column index
+   * @param {Number} [level=0] Header level (0 = most distant to the table)
+   * @returns {Object} HTMLElement on success or undefined on error
+   */
+  getColumnHeader(col, level = 0) {
+    const TR = this.THEAD.childNodes[level];
+
+    if (TR) {
+      return TR.childNodes[this.columnFilter.sourceColumnToVisibleRowHeadedColumn(col)];
+    }
+  }
+
+  /**
+   * getRowHeader
+   *
+   * @param {Number} row Row index
+   * @returns {HTMLElement} HTMLElement on success or Number one of the exit codes on error: `null table doesn't have row headers`
+   */
+  getRowHeader(row) {
+    if (this.columnFilter.sourceColumnToVisibleRowHeadedColumn(0) === 0) {
+      return null;
+    }
+    const TR = this.TBODY.childNodes[this.rowFilter.sourceToRendered(row)];
+
+    if (TR) {
+      return TR.childNodes[0];
+    }
+  }
+
+  /**
+   * Returns cell coords object for a given TD
+   *
+   * @param {HTMLTableCellElement} TD
+   * @returns {WalkontableCellCoords}
+   */
+  getCoords(TD) {
+    if (TD.nodeName !== 'TD' && TD.nodeName !== 'TH') {
+      TD = closest(TD, ['TD', 'TH']);
     }
 
-  }
+    const TR = TD.parentNode;
+    const CONTAINER = TR.parentNode;
+    let row = index(TR);
+    let col = TD.cellIndex;
 
-  return -1;
-};
+    if (overlayContainsElement(WalkontableOverlay.CLONE_TOP_LEFT_CORNER, TD) || overlayContainsElement(WalkontableOverlay.CLONE_TOP, TD)) {
+      if (CONTAINER.nodeName === 'THEAD') {
+        row -= CONTAINER.childNodes.length;
+      }
 
-//returns -1 if no row is visible
-WalkontableTable.prototype.getLastVisibleRow = function () {
-  var lastVisibleRow =  this.rowFilter.visibleToSource(this.getRowStrategy().countVisible() - 1);
-  var instance = this.instance;
-
-  if (instance.cloneOverlay instanceof WalkontableVerticalScrollbarNative || instance.cloneOverlay instanceof WalkontableCornerScrollbarNative) {
-    var fixedRowsTop = this.instance.getSetting('fixedRowsTop');
-
-    return Math.min(fixedRowsTop - 1, lastVisibleRow);
-  } else {
-    return lastVisibleRow;
-  }
-
-};
-
-//returns -1 if no column is visible
-WalkontableTable.prototype.getLastVisibleColumn = function () {
-  var instance = this.instance;
-
-  if (this.isWorkingOnClone()){
-
-    if (instance.cloneOverlay instanceof WalkontableHorizontalScrollbarNative || instance.cloneOverlay instanceof WalkontableCornerScrollbarNative){
-      var lastVisibleColumn = this.getColumnStrategy().countVisible() - 1;
-      var fixedColumnsLeft =  instance.getSetting('fixedColumnsLeft');
-      return Math.min(fixedColumnsLeft - 1, lastVisibleColumn);
     } else {
-      return this.instance.cloneSource.wtTable.getLastVisibleColumn();
+      if (CONTAINER === this.THEAD) {
+        row = this.rowFilter.visibleColHeadedRowToSourceRow(row);
+      } else {
+        row = this.rowFilter.renderedToSource(row);
+      }
     }
 
-  }
+    if (overlayContainsElement(WalkontableOverlay.CLONE_TOP_LEFT_CORNER, TD) || overlayContainsElement(WalkontableOverlay.CLONE_LEFT, TD)) {
+      col = this.columnFilter.offsettedTH(col);
 
-
-  var leftOffset = this.instance.wtScrollbars.horizontal.getScrollPosition();
-  var leftPartOfTable = leftOffset + this.instance.wtViewport.getWorkspaceWidth(Infinity);
-  var columnCount = this.getColumnStrategy().cellCount;
-  var rowHeaderCount = this.instance.getSetting('rowHeaders').length || 0;
-  var firstTR = this.TBODY.firstChild;
-
-  if (!columnCount) {
-    return -1;
-  }
-
-  for (var colIndex = 0; colIndex < columnCount + rowHeaderCount; colIndex++){
-    leftPartOfTable -= firstTR.childNodes[colIndex].offsetWidth;
-
-    if (leftPartOfTable <= 0){
-      return colIndex - rowHeaderCount;
+    } else {
+      col = this.columnFilter.visibleRowHeadedColumnToSourceColumn(col);
     }
 
+    return new WalkontableCellCoords(row, col);
   }
 
-  return colIndex - rowHeaderCount - 1;
-};
+  getTrForRow(row) {
+    return this.TBODY.childNodes[this.rowFilter.sourceToRendered(row)];
+  }
 
-WalkontableTable.prototype.isRowBeforeViewport = function (r) {
-  return (this.rowFilter.sourceToVisible(r) < this.rowFilter.fixedCount && r >= this.rowFilter.fixedCount);
-};
+  getFirstRenderedRow() {
+    return this.wot.wtViewport.rowsRenderCalculator.startRow;
+  }
 
-WalkontableTable.prototype.isRowAfterViewport = function (r) {
-  return (r > this.getLastVisibleRow());
-};
+  getFirstVisibleRow() {
+    return this.wot.wtViewport.rowsVisibleCalculator.startRow;
+  }
 
-WalkontableTable.prototype.isColumnBeforeViewport = function (c) {
-  return (this.columnFilter.sourceToVisible(c) < this.columnFilter.fixedCount && c >= this.columnFilter.fixedCount);
-};
+  getFirstRenderedColumn() {
+    return this.wot.wtViewport.columnsRenderCalculator.startColumn;
+  }
 
-WalkontableTable.prototype.isColumnAfterViewport = function (c) {
-  return (c > this.getLastVisibleColumn());
-};
+  /**
+   * @returns {Number} Returns -1 if no row is visible
+   */
+  getFirstVisibleColumn() {
+    return this.wot.wtViewport.columnsVisibleCalculator.startColumn;
+  }
 
-WalkontableTable.prototype.isRowInViewport = function (r) {
-  return (!this.isRowBeforeViewport(r) && !this.isRowAfterViewport(r));
-};
+  /**
+   * @returns {Number} Returns -1 if no row is visible
+   */
+  getLastRenderedRow() {
+    return this.wot.wtViewport.rowsRenderCalculator.endRow;
+  }
 
-WalkontableTable.prototype.isColumnInViewport = function (c) {
-  return (!this.isColumnBeforeViewport(c) && !this.isColumnAfterViewport(c));
-};
+  getLastVisibleRow() {
+    return this.wot.wtViewport.rowsVisibleCalculator.endRow;
+  }
 
-WalkontableTable.prototype.isLastRowFullyVisible = function () {
-  return (this.getLastVisibleRow() === this.instance.getSetting('totalRows') - 1 && !this.getRowStrategy().isLastIncomplete());
-};
+  getLastRenderedColumn() {
+    return this.wot.wtViewport.columnsRenderCalculator.endColumn;
+  }
 
-WalkontableTable.prototype.isLastColumnFullyVisible = function () {
-  return (this.getLastVisibleColumn() === this.instance.getSetting('totalColumns') - 1 && !this.getColumnStrategy().isLastIncomplete());
-};
+  /**
+   * @returns {Number} Returns -1 if no column is visible
+   */
+  getLastVisibleColumn() {
+    return this.wot.wtViewport.columnsVisibleCalculator.endColumn;
+  }
 
-WalkontableTable.prototype.getVisibleRowsCount = function () {
-  return this.getRowStrategy().countVisible();
-};
+  isRowBeforeRenderedRows(row) {
+    return (this.rowFilter.sourceToRendered(row) < 0 && row >= 0);
+  }
 
-WalkontableTable.prototype.allRowsInViewport = function () {
-  return this.getRowStrategy().cellCount == this.getVisibleRowsCount();
-};
+  isRowAfterViewport(row) {
+    return (this.rowFilter.sourceToRendered(row) > this.getLastVisibleRow());
+  }
+
+  isRowAfterRenderedRows(row) {
+    return (this.rowFilter.sourceToRendered(row) > this.getLastRenderedRow());
+  }
+
+  isColumnBeforeViewport(column) {
+    return this.columnFilter.sourceToRendered(column) < 0 && column >= 0;
+  }
+
+  isColumnAfterViewport(column) {
+    return (this.columnFilter.sourceToRendered(column) > this.getLastVisibleColumn());
+  }
+
+  isLastRowFullyVisible() {
+    return this.getLastVisibleRow() === this.getLastRenderedRow();
+  }
+
+  isLastColumnFullyVisible() {
+    return this.getLastVisibleColumn() === this.getLastRenderedColumn();
+  }
+
+  getRenderedColumnsCount() {
+    let columnsCount = this.wot.wtViewport.columnsRenderCalculator.count;
+    let totalColumns = this.wot.getSetting('totalColumns');
+
+    if (this.wot.isOverlayName(WalkontableOverlay.CLONE_DEBUG)) {
+      columnsCount = totalColumns;
+
+    } else if (this.wot.isOverlayName(WalkontableOverlay.CLONE_LEFT) ||
+               this.wot.isOverlayName(WalkontableOverlay.CLONE_TOP_LEFT_CORNER) ||
+               this.wot.isOverlayName(WalkontableOverlay.CLONE_BOTTOM_LEFT_CORNER)) {
+      return Math.min(this.wot.getSetting('fixedColumnsLeft'), totalColumns);
+
+    }
+
+    return columnsCount;
+  }
+
+  getRenderedRowsCount() {
+    let rowsCount = this.wot.wtViewport.rowsRenderCalculator.count;
+    let totalRows = this.wot.getSetting('totalRows');
+
+    if (this.wot.isOverlayName(WalkontableOverlay.CLONE_DEBUG)) {
+      rowsCount = totalRows;
+
+    } else if (this.wot.isOverlayName(WalkontableOverlay.CLONE_TOP) ||
+               this.wot.isOverlayName(WalkontableOverlay.CLONE_TOP_LEFT_CORNER)) {
+      rowsCount = Math.min(this.wot.getSetting('fixedRowsTop'), totalRows);
+
+    } else if (this.wot.isOverlayName(WalkontableOverlay.CLONE_BOTTOM) ||
+               this.wot.isOverlayName(WalkontableOverlay.CLONE_BOTTOM_LEFT_CORNER)) {
+      rowsCount = Math.min(this.wot.getSetting('fixedRowsBottom'), totalRows);
+    }
+
+    return rowsCount;
+  }
+
+  getVisibleRowsCount() {
+    return this.wot.wtViewport.rowsVisibleCalculator.count;
+  }
+
+  allRowsInViewport() {
+    return this.wot.getSetting('totalRows') == this.getVisibleRowsCount();
+  }
+
+  /**
+   * Checks if any of the row's cells content exceeds its initial height, and if so, returns the oversized height
+   *
+   * @param {Number} sourceRow
+   * @returns {Number}
+   */
+  getRowHeight(sourceRow) {
+    let height = this.wot.wtSettings.settings.rowHeight(sourceRow);
+    let oversizedHeight = this.wot.wtViewport.oversizedRows[sourceRow];
+
+    if (oversizedHeight !== void 0) {
+      height = height === void 0 ? oversizedHeight : Math.max(height, oversizedHeight);
+    }
+
+    return height;
+  }
+
+  getColumnHeaderHeight(level) {
+    let height = this.wot.wtSettings.settings.defaultRowHeight;
+    let oversizedHeight = this.wot.wtViewport.oversizedColumnHeaders[level];
+
+    if (oversizedHeight !== void 0) {
+      height = height ? Math.max(height, oversizedHeight) : oversizedHeight;
+    }
+
+    return height;
+  }
+
+  getVisibleColumnsCount() {
+    return this.wot.wtViewport.columnsVisibleCalculator.count;
+  }
+
+  allColumnsInViewport() {
+    return this.wot.getSetting('totalColumns') == this.getVisibleColumnsCount();
+  }
+
+  getColumnWidth(sourceColumn) {
+    let width = this.wot.wtSettings.settings.columnWidth;
+
+    if (typeof width === 'function') {
+      width = width(sourceColumn);
+
+    } else if (typeof width === 'object') {
+      width = width[sourceColumn];
+    }
+
+    return width || this.wot.wtSettings.settings.defaultColumnWidth;
+  }
+
+  getStretchedColumnWidth(sourceColumn) {
+    let columnWidth = this.getColumnWidth(sourceColumn);
+    let width = columnWidth == null ? this.instance.wtSettings.settings.defaultColumnWidth : columnWidth;
+    let calculator = this.wot.wtViewport.columnsRenderCalculator;
+
+    if (calculator) {
+      let stretchedWidth = calculator.getStretchedColumnWidth(sourceColumn, width);
+
+      if (stretchedWidth) {
+        width = stretchedWidth;
+      }
+    }
+
+    return width;
+  }
+}
+
+export {WalkontableTable};
+
+window.WalkontableTable = WalkontableTable;

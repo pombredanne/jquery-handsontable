@@ -1,9 +1,17 @@
-(function(Handsontable){
+import Handsontable from './../browser';
+import {empty} from './../helpers/dom/element';
+import {getEditor, registerEditor} from './../editors';
+import {TextEditor} from './textEditor';
 
-  var PasswordEditor = Handsontable.editors.TextEditor.prototype.extend();
-
-  PasswordEditor.prototype.createElements = function () {
-    Handsontable.editors.TextEditor.prototype.createElements.apply(this, arguments);
+/**
+ * @private
+ * @editor PasswordEditor
+ * @class PasswordEditor
+ * @dependencies TextEditor
+ */
+class PasswordEditor extends TextEditor {
+  createElements() {
+    super.createElements();
 
     this.TEXTAREA = document.createElement('input');
     this.TEXTAREA.setAttribute('type', 'password');
@@ -11,14 +19,12 @@
     this.textareaStyle = this.TEXTAREA.style;
     this.textareaStyle.width = 0;
     this.textareaStyle.height = 0;
-    this.$textarea = $(this.TEXTAREA);
 
-    Handsontable.Dom.empty(this.TEXTAREA_PARENT);
+    empty(this.TEXTAREA_PARENT);
     this.TEXTAREA_PARENT.appendChild(this.TEXTAREA);
+  }
+}
 
-  };
+export {PasswordEditor};
 
-  Handsontable.editors.PasswordEditor = PasswordEditor;
-  Handsontable.editors.registerEditor('password', PasswordEditor);
-
-})(Handsontable);
+registerEditor('password', PasswordEditor);

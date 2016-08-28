@@ -81,6 +81,25 @@ describe('HandsontableEditor', function () {
     expect(getDataAtCell(2, 0)).toEqual('BMW');
   });
 
+  it('should keep focus on textarea after arrow is pressed', function () {
+    var hot = handsontable({
+      columns: [
+        {
+          type: 'handsontable',
+          handsontable: {
+            colHeaders: ['Marque', 'Country', 'Parent company'],
+            data: getManufacturerData()
+          }
+        }
+      ]
+    });
+    selectCell(2, 0);
+
+    keyDownUp('enter');
+    keyDownUp('arrow_down');
+    expect(document.activeElement).toEqual(hot.getActiveEditor().TEXTAREA);
+  });
+
   it('should focus the TD after HT editor is prepared and destroyed', function () {
     handsontable({
       columns: [
@@ -159,7 +178,10 @@ describe('HandsontableEditor', function () {
 
       keyDownUp('enter');
 
-      expect(hot.getActiveEditor().$htContainer.handsontable('getSelected')).toEqual([0, 0, 0, 0]);
+      var ht = Handsontable.editors.getEditor('handsontable', hot);
+      var innerHot = ht.htEditor;
+
+      expect(innerHot.getSelected()).toEqual([0, 0, 0, 0]);
     });
 
     it("should hide textarea", function () {
@@ -179,7 +201,7 @@ describe('HandsontableEditor', function () {
 
       keyDownUp('enter');
 
-      expect(hot.getActiveEditor().$textarea.css('visibility')).toEqual('hidden');
+      expect(hot.getActiveEditor().TEXTAREA.style.visibility).toEqual('hidden');
 
     });
   });
@@ -202,7 +224,10 @@ describe('HandsontableEditor', function () {
 
       keyDownUp('enter');
 
-      expect(hot.getActiveEditor().$htContainer.handsontable('getSelected')).toBeUndefined();
+      var ht = Handsontable.editors.getEditor('handsontable', hot);
+      var innerHot = ht.htEditor;
+
+      expect(innerHot.getSelected()).toBeUndefined();
     });
 
     it("should show textarea", function () {
@@ -220,8 +245,7 @@ describe('HandsontableEditor', function () {
       selectCell(2, 0);
 
       keyDownUp('enter');
-
-      expect(hot.getActiveEditor().$textarea.css('visibility')).toEqual('visible');
+      expect(hot.getActiveEditor().TEXTAREA.style.visibility).toEqual('visible');
 
     });
 

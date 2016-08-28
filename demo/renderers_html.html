@@ -5,16 +5,16 @@
   <title>Custom HTML in cells and headers - Handsontable</title>
 
   <!--
-  Loading Handsontable (full distribution that includes all dependencies apart from jQuery)
+  Loading Handsontable (full distribution that includes all dependencies)
   -->
-  <script data-jsfiddle="common" src="../lib/jquery.min.js"></script>
-  <script data-jsfiddle="common" src="../dist/jquery.handsontable.full.js"></script>
-  <link data-jsfiddle="common" rel="stylesheet" media="screen" href="../dist/jquery.handsontable.full.css">
-  <!-- the below is only needed for DateCell (uses jQuery UI Datepicker) -->
-  <script data-jsfiddle="common" src="../lib/jquery-ui/js/jquery-ui.custom.min.js"></script>
-  <script data-jsfiddle="common" src="js/jquery.ui.position.js"></script>
-  <link data-jsfiddle="common" rel="stylesheet" media="screen"
-        href="../lib/jquery-ui/css/ui-bootstrap/jquery-ui.custom.css">
+  <link data-jsfiddle="common" rel="stylesheet" media="screen" href="../dist/handsontable.css">
+  <link data-jsfiddle="common" rel="stylesheet" media="screen" href="../dist/pikaday/pikaday.css">
+  <script data-jsfiddle="common" src="../dist/pikaday/pikaday.js"></script>
+  <script data-jsfiddle="common" src="../dist/moment/moment.js"></script>
+  <script data-jsfiddle="common" src="../dist/zeroclipboard/ZeroClipboard.js"></script>
+  <script data-jsfiddle="common" src="../dist/numbro/numbro.js"></script>
+  <script data-jsfiddle="common" src="../dist/numbro/languages.js"></script>
+  <script data-jsfiddle="common" src="../dist/handsontable.js"></script>
 
   <!--
   Loading demo dependencies. They are used here only to enhance the examples on this page
@@ -22,8 +22,11 @@
   <link data-jsfiddle="common" rel="stylesheet" media="screen" href="css/samples.css?20140331">
   <script src="js/samples.js"></script>
   <script src="js/highlight/highlight.pack.js"></script>
+  <script src="js/moment/moment.js"></script>
+  <script src="js/pikaday/pikaday.js"></script>
   <link rel="stylesheet" media="screen" href="js/highlight/styles/github.css">
   <link rel="stylesheet" href="css/font-awesome/css/font-awesome.min.css">
+  <link rel="stylesheet" href="js/pikaday/css/pikaday.css">
 
   <!--
   Facebook open graph. Don't copy this to your project :)
@@ -97,7 +100,7 @@
       <div id="example1"></div>
 
       <p>
-        <button name="dump" data-dump="#example1" title="Prints current data source to Firebug/Chrome Dev Tools">
+        <button name="dump" data-dump="#example1" data-instance="hot1" title="Prints current data source to Firebug/Chrome Dev Tools">
           Dump data to console
         </button>
       </p>
@@ -112,61 +115,30 @@
 
       <script data-jsfiddle="example1">
         var data = [
-          {
-            title: "<a href='http://www.amazon.com/Professional-JavaScript-Developers-Nicholas-Zakas/dp/1118026691'>Professional JavaScript for Web Developers</a>",
-            description: "This <a href='http://bit.ly/sM1bDf'>book</a> provides a developer-level introduction along with more advanced and useful features of <b>JavaScript</b>.",
-            comments: "I would rate it &#x2605;&#x2605;&#x2605;&#x2605;&#x2606;",
-            cover: "http://ecx.images-amazon.com/images/I/51bRhyVTVGL._SL50_.jpg"
-          },
-          {
-            title: "<a href='http://shop.oreilly.com/product/9780596517748.do'>JavaScript: The Good Parts</a>",
-            description: "This book provides a developer-level introduction along with <b>more advanced</b> and useful features of JavaScript.",
-            comments: "This is <big>the</big> book about JavaScript",
-            cover: "http://ecx.images-amazon.com/images/I/51gdVAEfPUL._SL50_.jpg"
-          },
-          {
-            title: "<a href='http://shop.oreilly.com/product/9780596805531.do'>JavaScript: The Definitive Guide</a>",
-            description: "<em>JavaScript: The Definitive Guide</em> provides a thorough description of the core <b>JavaScript</b> language and both the legacy and standard DOMs implemented in web browsers.",
-            comments: "I've never actually read it, but the <a href='http://shop.oreilly.com/product/9780596805531.do'>comments</a> are highly <strong>positive</strong>.",
-            cover: "http://ecx.images-amazon.com/images/I/51VFNL4T7kL._SL50_.jpg"
-          }
-        ];
+            {
+              title: "<a href='http://www.amazon.com/Professional-JavaScript-Developers-Nicholas-Zakas/dp/1118026691'>Professional JavaScript for Web Developers</a>",
+              description: "This <a href='http://bit.ly/sM1bDf'>book</a> provides a developer-level introduction along with more advanced and useful features of <b>JavaScript</b>.",
+              comments: "I would rate it &#x2605;&#x2605;&#x2605;&#x2605;&#x2606;",
+              cover: "http://ecx.images-amazon.com/images/I/51bRhyVTVGL._SL50_.jpg"
+            },
+            {
+              title: "<a href='http://shop.oreilly.com/product/9780596517748.do'>JavaScript: The Good Parts</a>",
+              description: "This book provides a developer-level introduction along with <b>more advanced</b> and useful features of JavaScript.",
+              comments: "This is <big>the</big> book about JavaScript",
+              cover: "http://ecx.images-amazon.com/images/I/51gdVAEfPUL._SL50_.jpg"
+            },
+            {
+              title: "<a href='http://shop.oreilly.com/product/9780596805531.do'>JavaScript: The Definitive Guide</a>",
+              description: "<em>JavaScript: The Definitive Guide</em> provides a thorough description of the core <b>JavaScript</b> language and both the legacy and standard DOMs implemented in web browsers.",
+              comments: "I've never actually read it, but the <a href='http://shop.oreilly.com/product/9780596805531.do'>comments</a> are highly <strong>positive</strong>.",
+              cover: "http://ecx.images-amazon.com/images/I/51VFNL4T7kL._SL50_.jpg"
+            }
+          ],
+          container1,
+          hot1;
 
-        function strip_tags(input, allowed) {
-          // +   original by: Kevin van Zonneveld (http://kevin.vanzonneveld.net)
-          allowed = (((allowed || "") + "").toLowerCase().match(/<[a-z][a-z0-9]*>/g) || []).join(''); // making sure the allowed arg is a string containing only tags in lowercase (<a><b><c>)
-          var tags = /<\/?([a-z][a-z0-9]*)\b[^>]*>/gi,
-            commentsAndPhpTags = /<!--[\s\S]*?-->|<\?(?:php)?[\s\S]*?\?>/gi;
-          return input.replace(commentsAndPhpTags, '').replace(tags, function ($0, $1) {
-            return allowed.indexOf('<' + $1.toLowerCase() + '>') > -1 ? $0 : '';
-          });
-        }
-
-        var safeHtmlRenderer = function (instance, td, row, col, prop, value, cellProperties) {
-          var escaped = Handsontable.helper.stringify(value);
-          escaped = strip_tags(escaped, '<em><b><strong><a><big>'); //be sure you only allow certain HTML tags to avoid XSS threats (you should also remove unwanted HTML attributes)
-          td.innerHTML = escaped;
-          return td;
-        };
-
-        var coverRenderer = function (instance, td, row, col, prop, value, cellProperties) {
-          var escaped = Handsontable.helper.stringify(value);
-          if (escaped.indexOf('http') === 0) {
-            var $img = $('<img>');
-            $img.attr('src', value);
-            $img.on('mousedown', function (event) {
-              event.preventDefault(); //prevent selection quirk
-            });
-            $(td).empty().append($img); //empty is needed because you are rendering to an existing cell
-          }
-          else {
-            Handsontable.renderers.TextRenderer.apply(this, arguments); //render as text
-          }
-          return td;
-        };
-
-        var $container = $("#example1");
-        $container.handsontable({
+        container1 = document.getElementById('example1');
+        hot1 = new Handsontable(container1, {
           data: data,
           colWidths: [200, 200, 200, 60],
           colHeaders: ["Title", "Description", "Comments", "Cover"],
@@ -177,6 +149,50 @@
             {data: "cover", renderer: coverRenderer}
           ]
         });
+
+        // original by: Kevin van Zonneveld (http://kevin.vanzonneveld.net)
+        function strip_tags(input, allowed) {
+          var tags = /<\/?([a-z][a-z0-9]*)\b[^>]*>/gi,
+            commentsAndPhpTags = /<!--[\s\S]*?-->|<\?(?:php)?[\s\S]*?\?>/gi;
+
+          // making sure the allowed arg is a string containing only tags in lowercase (<a><b><c>)
+          allowed = (((allowed || "") + "").toLowerCase().match(/<[a-z][a-z0-9]*>/g) || []).join('');
+
+          return input.replace(commentsAndPhpTags, '').replace(tags, function ($0, $1) {
+            return allowed.indexOf('<' + $1.toLowerCase() + '>') > -1 ? $0 : '';
+          });
+        }
+
+        function safeHtmlRenderer(instance, td, row, col, prop, value, cellProperties) {
+          var escaped = Handsontable.helper.stringify(value);
+          escaped = strip_tags(escaped, '<em><b><strong><a><big>'); //be sure you only allow certain HTML tags to avoid XSS threats (you should also remove unwanted HTML attributes)
+          td.innerHTML = escaped;
+
+          return td;
+        }
+
+        function coverRenderer (instance, td, row, col, prop, value, cellProperties) {
+          var escaped = Handsontable.helper.stringify(value),
+            img;
+
+          if (escaped.indexOf('http') === 0) {
+            img = document.createElement('IMG');
+            img.src = value;
+
+            Handsontable.Dom.addEvent(img, 'mousedown', function (e){
+              e.preventDefault(); // prevent selection quirk
+            });
+
+            Handsontable.Dom.empty(td);
+            td.appendChild(img);
+          }
+          else {
+            // render as text
+            Handsontable.renderers.TextRenderer.apply(this, arguments);
+          }
+
+          return td;
+        }
       </script>
     </div>
   </div>
@@ -198,7 +214,7 @@
       <div id="example2"></div>
 
       <p>
-        <button name="dump" data-dump="#example2" title="Prints current data source to Firebug/Chrome Dev Tools">
+        <button name="dump" data-dump="#example2" data-instance="hot2" title="Prints current data source to Firebug/Chrome Dev Tools">
           Dump data to console
         </button>
       </p>
@@ -212,48 +228,59 @@
       </div>
 
       <script data-jsfiddle="example2">
-        var isChecked;
+        var
+          isChecked,
+          container2 = document.getElementById('example2'),
+          hot2;
 
-        var customRenderer = function (instance, td) {
-          Handsontable.renderers.TextRenderer.apply(this, arguments);
-          if (isChecked) {
-            td.style.backgroundColor = 'yellow';
-          }
-          else {
-            td.style.backgroundColor = 'white';
-          }
-          return td;
-        };
+          hot2 = new Handsontable(container2, {
+            startCols: 2,
+            columns: [
+              {},
+              {renderer: customRenderer}
+            ],
+            colHeaders: function (col) {
+              var txt;
 
-        var $container = $("#example2");
-        $container.handsontable({
-          startCols: 2,
-          columns: [
-            {},
-            {renderer: customRenderer}
-          ],
-          colHeaders: function (col) {
-            switch (col) {
-              case 0:
-                return "<b>Bold</b> and <em>Beautiful</em>";
+              switch (col) {
+                case 0:
+                  return '"<b>Bold</b> and <em>Beautiful</em>';
 
-              case 1:
-                var txt = "Some <input type='checkbox' class='checker' ";
-                txt += isChecked ? 'checked="checked"' : '';
-                txt += "> checkbox";
-                return txt;
+                case 1:
+                  txt = "Some <input type='checkbox' class='checker' ";
+                  txt += isChecked ? 'checked="checked"' : '';
+                  txt += "> checkbox";
+
+                  return txt;
+              }
             }
+          });
+
+          function customRenderer(instance, td) {
+            Handsontable.renderers.TextRenderer.apply(this, arguments);
+
+            if (isChecked) {
+              td.style.backgroundColor = 'yellow';
+            }
+            else {
+              td.style.backgroundColor = 'white';
+            }
+
+            return td;
           }
-        });
 
-        $container.on('mousedown', 'input.checker', function (event) {
-          event.stopPropagation();
-        });
+          Handsontable.Dom.addEvent(container, 'mousedown', function (event) {
+            if (event.target.nodeName == 'INPUT' && event.target.className == 'checker') {
+              event.stopPropagation();
+            }
+          });
 
-        $container.on('mouseup', 'input.checker', function (event) {
-          isChecked = !$(this).is(':checked');
-          $container.handsontable('render');
-        });
+          Handsontable.Dom.addEvent(container, 'mouseup', function (event) {
+            if (event.target.nodeName == 'INPUT' && event.target.className == 'checker') {
+              isChecked = !event.target.checked;
+              hot2.render();
+            }
+          });
       </script>
     </div>
   </div>
@@ -271,7 +298,7 @@
       <div id="example3"></div>
 
       <p>
-        <button name="dump" data-dump="#example3" title="Prints current data source to Firebug/Chrome Dev Tools">
+        <button name="dump" data-dump="#example3" data-instance="hot3" title="Prints current data source to Firebug/Chrome Dev Tools">
           Dump data to console
         </button>
       </p>
@@ -319,11 +346,12 @@
           z-index: 10;
         }
 
-        .changeTypeMenu li{
+        .changeTypeMenu li {
           text-align: left;
           list-style: none;
           padding: 2px 20px;
           cursor: pointer;
+          margin-bottom: 0;
         }
 
         .changeTypeMenu li.active:before {
@@ -340,118 +368,141 @@
       </style>
 
       <script data-jsfiddle="example3">
-        var data = [
-          ["", "Maserati", "Mazda", "Mercedes", "Mini", "Mitsubishi"],
-          ["2009", 0, 2941, 4303, 354, 5814],
-          ["2010", 3, 2905, 2867, 412, 5284],
-          ["2011", 4, 2517, 4822, 552, 6127],
-          ["2012", 2, 2422, 5399, 776, 4151]
-        ];
-
-        var columns = [
+        var
+          data3 = [
+            ['', 'Maserati', 'Mazda', 'Mercedes', 'Mini', 'Mitsubishi'],
+            ['2009', 0, 2941, 4303, 354, 5814],
+            ['2010', 3, 2905, 2867, 412, 5284],
+            ['2011', 4, 2517, 4822, 552, 6127],
+            ['2012', 2, 2422, 5399, 776, 4151]
+          ],
+          columns = [
             {type: 'numeric'},
             {type: 'numeric'},
             {type: 'numeric'},
             {type: 'numeric'},
             {type: 'numeric'},
             {type: 'numeric'}
-          ];
+          ],
+          container = document.getElementById('example3'),
+          hot3;
 
-
-        $('#example3').handsontable({
-          data: data,
+        hot3 = new Handsontable(container,{
+          data: data3,
           colHeaders: true,
           minSpareRows: 1,
           type: 'numeric',
           columns: columns,
+
           afterGetColHeader: function (col, TH) {
-            var instance = this;
-            var menu = buildMenu(columns[col].type);
+            var instance = this,
+              menu = buildMenu(columns[col].type),
+              button = buildButton();
 
-            var $button = buildButton();
+            addButtonMenuEvent(button, menu);
 
-            $button.click(function (e) {
-              instance.rootElement[0].appendChild(menu[0]);
-
-              e.preventDefault();
-              e.stopImmediatePropagation();
-
-              $('.changeTypeMenu').hide();
-              menu.show();
-              menu.position({
-                 my: 'left top',
-                 at: 'left bottom',
-                 of: $button,
-                 within: instance.rootElement
-              });
-
-              $(document).off('click.changeTypeMenu.hide');
-
-              $(document).one('click.changeTypeMenu.hide', function () {
-//                 menu.hide();
-                instance.rootElement[0].removeChild(menu[0]);
-              });
-
-
+            Handsontable.Dom.addEvent(menu, 'click', function (event) {
+              if (event.target.nodeName == 'LI') {
+                setColumnType(col, event.target.data['colType'], instance);
+              }
             });
-
-            menu.on('click', 'li', function () {
-               setColumnType(col, $(this).data('colType'), instance);
-            });
-
-            TH.firstChild.appendChild($button[0]);
-
-            //TH.appendChild(menu[0]);
+            TH.firstChild.appendChild(button);
+            TH.style['white-space'] = 'normal';
           },
           cells: function (row, col, prop) {
+            var cellProperties;
+
             if (row === 0) {
-              var cellProperties = {
-                type: 'text' //force text type for first row
+              cellProperties = {
+                type: 'text' // force text type for first row
               };
+
               return cellProperties;
             }
           }
         });
 
+        function addButtonMenuEvent(button, menu) {
+          Handsontable.Dom.addEvent(button, 'click', function (event) {
+            var changeTypeMenu, position, removeMenu;
+
+            document.body.appendChild(menu);
+
+            event.preventDefault();
+            Handsontable.dom.stopImmediatePropagation(event);
+
+            changeTypeMenu = document.querySelectorAll('.changeTypeMenu');
+
+            for (var i = 0, len = changeTypeMenu.length; i < len; i++) {
+              changeTypeMenu[i].style.display = 'none';
+            }
+            menu.style.display = 'block';
+            position = button.getBoundingClientRect();
+
+            menu.style.top = (position.top + (window.scrollY || window.pageYOffset)) + 2 + 'px';
+            menu.style.left = (position.left) + 'px';
+
+            removeMenu = function (event) {
+              if (event.target.nodeName == 'LI' && event.target.parentNode.className.indexOf('changeTypeMenu') !== -1) {
+                if (menu.parentNode) {
+                  menu.parentNode.removeChild(menu);
+                }
+              }
+            };
+            Handsontable.Dom.removeEvent(document, 'click', removeMenu);
+            Handsontable.Dom.addEvent(document, 'click', removeMenu);
+          });
+        }
+
         function buildMenu(activeCellType){
-          var menu = $('<ul></ul>').addClass('changeTypeMenu');
+          var
+            menu = document.createElement('UL'),
+            types = ['text', 'numeric', 'date'],
+            item;
 
-          $.each(['text', 'numeric', 'date'], function (i, type) {
-            var item = $('<li></li>').data('colType', type).text(type);
+          menu.className = 'changeTypeMenu';
 
-            if(activeCellType == type){
-              item.addClass('active');
+          for (var i = 0, len = types.length; i< len; i++) {
+            item = document.createElement('LI');
+            if('innerText' in item) {
+              item.innerText = types[i];
+            } else {
+              item.textContent = types[i];
             }
 
-            menu.append(item);
+            item.data = {'colType': types[i]};
 
-          });
-
+            if (activeCellType == types[i]) {
+              item.className = 'active';
+            }
+            menu.appendChild(item);
+          }
 
           return menu;
-
         }
 
         function buildButton() {
-          return $('<button></button>').addClass('changeType').html('\u25BC');
+          var button = document.createElement('BUTTON');
+
+          button.innerHTML = '\u25BC';
+          button.className = 'changeType';
+
+          return button;
         }
 
         function setColumnType(i, type, instance) {
           columns[i].type = type;
           instance.updateSettings({columns: columns});
-          instance.validateCells(function(){
+          instance.validateCells(function() {
             instance.render();
           });
         }
-
-
       </script>
     </div>
   </div>
 </div>
 
-<div class="footer-text">Handsontable &copy; 2012-2014 Marcin Warpechowski and contributors.<br> Code and documentation
-  licensed under the The MIT License.
+<div class="footer-text">
 </div>
 </div>
 

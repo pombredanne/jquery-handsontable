@@ -7,9 +7,16 @@
   <!--
   Loading Handsontable (full distribution that includes all dependencies apart from jQuery)
   -->
-  <script data-jsfiddle="common" src="../lib/jquery.min.js"></script>
-  <script data-jsfiddle="common" src="../dist/jquery.handsontable.full.js"></script>
-  <link data-jsfiddle="common" rel="stylesheet" media="screen" href="../dist/jquery.handsontable.full.css">
+  <script data-jsfiddle="common" src="../demo/js/jquery.min.js"></script>
+
+  <link data-jsfiddle="common" rel="stylesheet" media="screen" href="../dist/handsontable.css">
+  <link data-jsfiddle="common" rel="stylesheet" media="screen" href="../dist/pikaday/pikaday.css">
+  <script data-jsfiddle="common" src="../dist/pikaday/pikaday.js"></script>
+  <script data-jsfiddle="common" src="../dist/moment/moment.js"></script>
+  <script data-jsfiddle="common" src="../dist/zeroclipboard/ZeroClipboard.js"></script>
+  <script data-jsfiddle="common" src="../dist/numbro/numbro.js"></script>
+  <script data-jsfiddle="common" src="../dist/numbro/languages.js"></script>
+  <script data-jsfiddle="common" src="../dist/handsontable.js"></script>
 
   <!--
   Loading demo dependencies. They are used here only to enhance the examples on this page
@@ -75,7 +82,7 @@
           <div id="example1"></div>
 
           <p>
-            <button name="dump" data-dump="#example1" title="Prints current data source to Firebug/Chrome Dev Tools">
+            <button name="dump" data-dump="#example1" data-instance="hot" title="Prints current data source to Firebug/Chrome Dev Tools">
               Dump data to console
             </button>
           </p>
@@ -85,11 +92,15 @@
       <div class="codeLayout">
         <div class="pad">
           <script>
-            var $container = $("#example1");
-            var $console = $("#exampleConsole");
-            var $parent = $container.parent();
-            var autosaveNotification;
-            $container.handsontable({
+            var
+              $container = $("#example1"),
+              $console = $("#exampleConsole"),
+              $parent = $container.parent(),
+              autosaveNotification,
+              hot;
+
+            hot = new Handsontable($container[0], {
+              columnSorting: true,
               startRows: 8,
               startCols: 3,
               rowHeaders: true,
@@ -103,35 +114,41 @@
               minSpareRows: 1,
               contextMenu: true,
               afterChange: function (change, source) {
-                if (source === 'loadData') {
-                  return; //don't save this change
+                var data;
+
+                if (source === 'loadData' || !$parent.find('input[name=autosave]').is(':checked')) {
+                  return;
                 }
-                if ($parent.find('input[name=autosave]').is(':checked')) {
-                  clearTimeout(autosaveNotification);
-                  $.ajax({
-                    url: "php/save.php",
-                    dataType: "json",
-                    type: "POST",
-                    data: {changes: change}, //contains changed cells' data
-                    success: function () {
-                      $console.text('Autosaved (' + change.length + ' cell' + (change.length > 1 ? 's' : '') + ')');
-                      autosaveNotification = setTimeout(function () {
-                        $console.text('Changes will be autosaved');
-                      }, 1000);
-                    }
-                  });
-                }
+                data = change[0];
+
+                // transform sorted row to original row
+                data[0] = hot.sortIndex[data[0]] ? hot.sortIndex[data[0]][0] : data[0];
+
+                clearTimeout(autosaveNotification);
+                $.ajax({
+                  url: 'php/save.php',
+                  dataType: 'json',
+                  type: 'POST',
+                  data: {changes: change}, // contains changed cells' data
+                  success: function () {
+                    $console.text('Autosaved (' + change.length + ' cell' + (change.length > 1 ? 's' : '') + ')');
+
+                    autosaveNotification = setTimeout(function () {
+                      $console.text('Changes will be autosaved');
+                    }, 1000);
+                  }
+                });
               }
             });
-            var handsontable = $container.data('handsontable');
 
             $parent.find('button[name=load]').click(function () {
               $.ajax({
-                url: "php/load.php",
+                url: 'php/load.php',
                 dataType: 'json',
                 type: 'GET',
                 success: function (res) {
                   var data = [], row;
+
                   for (var i = 0, ilen = res.cars.length; i < ilen; i++) {
                     row = [];
                     row[0] = res.cars[i].manufacturer;
@@ -140,15 +157,15 @@
                     data[res.cars[i].id - 1] = row;
                   }
                   $console.text('Data loaded');
-                  handsontable.loadData(data);
+                  hot.loadData(data);
                 }
               });
-            }).click(); //execute immediately
+            }).click(); // execute immediately
 
             $parent.find('button[name=save]').click(function () {
               $.ajax({
-                url: "php/save.php",
-                data: {"data": handsontable.getData()}, //returns all cells' data
+                url: 'php/save.php',
+                data: {data: hot.getData()}, // returns all cells' data
                 dataType: 'json',
                 type: 'POST',
                 success: function (res) {
@@ -165,10 +182,9 @@
               });
             });
 
-
             $parent.find('button[name=reset]').click(function () {
               $.ajax({
-                url: "php/reset.php",
+                url: 'php/reset.php',
                 success: function () {
                   $parent.find('button[name=load]').click();
                 },
@@ -191,8 +207,7 @@
       </div>
     </div>
 
-        <div class="footer-text">Handsontable &copy; 2012-2014 Marcin Warpechowski and contributors.<br> Code and documentation
-          licensed under the The MIT License.
+        <div class="footer-text">
         </div>
       </div>
 

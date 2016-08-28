@@ -1,12 +1,16 @@
 describe('WalkontableCore', function () {
-  var $table,
-    $container
+  var $table
+    , $container
+    , $wrapper
     , debug = false;
 
   beforeEach(function () {
-    $container = $('<div></div>').css({'overflow': 'auto'});
+    $wrapper = $('<div></div>').css({'overflow': 'hidden'});
+    $container = $('<div></div>');
     $table = $('<table></table>'); //create a table that is not attached to document
-    $container.append($table).appendTo('body');
+    $wrapper.append($container);
+    $container.append($table);
+    $wrapper.appendTo('body');
     createDataArray(100, 4);
   });
 
@@ -15,7 +19,7 @@ describe('WalkontableCore', function () {
       $('.wtHolder').remove();
     }
 
-    $container.remove();
+    $wrapper.remove();
   });
 
   it("first row should have the same text as in data source", function () {
@@ -23,10 +27,7 @@ describe('WalkontableCore', function () {
       table: $table[0],
       data: getData,
       totalRows: getTotalRows,
-      totalColumns: getTotalColumns,
-      offsetRow: 0,
-      height: 200,
-      width: 100
+      totalColumns: getTotalColumns
     });
     wt.draw();
     var TDs = $table.find('tbody tr:first td');
@@ -35,27 +36,18 @@ describe('WalkontableCore', function () {
   });
 
   it("should bootstrap table if empty TABLE is given", function () {
-    var rowHeight = 23; //measured in real life with walkontable.css
-    var colCount = 4;
-    var height = 200;
-
-    $container.width(200).height(height);
+    $wrapper.width(200).height(200);
 
     var wt = new Walkontable({
       table: $table[0],
       data: getData,
       totalRows: getTotalRows,
       totalColumns: getTotalColumns,
-      offsetRow: 0,
-      offsetColumn: 0,
-      height: height,
-      width: 200
+      renderAllRows: true
     });
     wt.draw();
 
-    var potentialCellCount = colCount * (Math.ceil(height / rowHeight) + wt.wtTable.getRowStrategy().maxOuts);
-
-    expect($table.find('td').length).toBe(potentialCellCount);
+    expect($table.find('td').length).toBe(400);
   });
 
   it("should bootstrap column headers if THEAD is given", function () {
@@ -68,9 +60,6 @@ describe('WalkontableCore', function () {
       data: getData,
       totalRows: getTotalRows,
       totalColumns: getTotalColumns,
-      offsetRow: 0,
-      offsetColumn: 0,
-      height: 200,
       rowHeaders: [function (row, TH) {
         TH.innerHTML = row + 1;
       }]
@@ -81,54 +70,26 @@ describe('WalkontableCore', function () {
     expect($table.find('tbody tr:first td').length).toBe(4);
   });
 
-  it("should figure out the amount of rows to display if height param given", function () {
-    var rowHeight = 23; //measured in real life with walkontable.css
-
-    $container.height(400);
-
-    var wt = new Walkontable({
-      table: $table[0],
-      data: getData,
-      totalRows: getTotalRows,
-      totalColumns: getTotalColumns,
-      offsetRow: 0,
-      offsetColumn: 0,
-      height: 400
-    });
-    wt.draw();
-
-    var expectedRowCount = Math.ceil(400 / rowHeight) + wt.wtTable.getRowStrategy().maxOuts;
-
-    expect($table.find('tbody tr').length).toBe(expectedRowCount);
-  });
-
   it("should figure out how many columns to display if width param given", function () {
-
-    $container.width(100);
+    $wrapper.width(100);
 
     var wt = new Walkontable({
       table: $table[0],
       data: getData,
       totalRows: getTotalRows,
-      totalColumns: getTotalColumns,
-      offsetRow: 0,
-      offsetColumn: 0,
-      width: 100
+      totalColumns: getTotalColumns
     });
     wt.draw();
-    expect($table.find('tbody tr:first td').length).toBe(4);
+    expect($table.find('tbody tr:first td').length).toBe(2);
   });
 
   it("should not render table that is removed from DOM", function () {
-    $container.remove();
+    $wrapper.remove();
     var wt = new Walkontable({
       table: $table[0],
       data: getData,
       totalRows: getTotalRows,
-      totalColumns: getTotalColumns,
-      offsetRow: 0,
-      offsetColumn: 0,
-      width: 100
+      totalColumns: getTotalColumns
     });
     wt.draw();
     expect(wt.drawn).toBe(false);
@@ -143,10 +104,7 @@ describe('WalkontableCore', function () {
       table: $table[0],
       data: getData,
       totalRows: getTotalRows,
-      totalColumns: getTotalColumns,
-      offsetRow: 0,
-      offsetColumn: 0,
-      width: 100
+      totalColumns: getTotalColumns
     });
     wt.draw();
     expect(wt.drawn).toBe(false);
@@ -162,8 +120,7 @@ describe('WalkontableCore', function () {
       table: $table[0],
       data: getData,
       totalRows: getTotalRows,
-      totalColumns: getTotalColumns,
-      height: 100
+      totalColumns: getTotalColumns
     });
     wt.draw();
     wt.draw(); //second render was giving "Cannot read property 'firstChild' of null" sometimes
@@ -189,8 +146,7 @@ describe('WalkontableCore', function () {
       table: $table[0],
       data: getData,
       totalRows: getTotalRows,
-      totalColumns: getTotalColumns,
-      height: 100
+      totalColumns: getTotalColumns
     });
     wt.draw();
     createDataArray(1, 5);

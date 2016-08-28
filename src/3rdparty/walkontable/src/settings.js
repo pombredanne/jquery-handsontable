@@ -1,113 +1,172 @@
-function WalkontableSettings(instance, settings) {
-  var that = this;
-  this.instance = instance;
 
-  //default settings. void 0 means it is required, null means it can be empty
-  this.defaults = {
-    table: void 0,
-    debug: false, //shows WalkontableDebugOverlay
+import {fastInnerText} from './../../../helpers/dom/element';
 
-    //presentation mode
-    scrollH: 'auto', //values: scroll (always show scrollbar), auto (show scrollbar if table does not fit in the container), none (never show scrollbar)
-    scrollV: 'auto', //values: see above
-    stretchH: 'none', //values: all, last, none
-    currentRowClassName: null,
-    currentColumnClassName: null,
+/**
+ * @class WalkontableSettings
+ */
+class WalkontableSettings {
+  /**
+   * @param {Walkontable} wotInstance
+   * @param {Object} settings
+   */
+  constructor(wotInstance, settings) {
+    this.wot = wotInstance;
 
-    //data source
-    data: void 0,
-    offsetRow: 0,
-    offsetColumn: 0,
-    fixedColumnsLeft: 0,
-    fixedRowsTop: 0,
-    rowHeaders: function () {
-      return []
-    }, //this must be array of functions: [function (row, TH) {}]
-    columnHeaders: function () {
-      return []
-    }, //this must be array of functions: [function (column, TH) {}]
-    totalRows: void 0,
-    totalColumns: void 0,
-    width: null,
-    height: null,
-    cellRenderer: function (row, column, TD) {
-      var cellData = that.getSetting('data', row, column);
-      Handsontable.Dom.fastInnerText(TD, cellData === void 0 || cellData === null ? '' : cellData);
-    },
-    columnWidth: 50,
-    rowHeight: function (row) {
-      return 23;
-    },
-    defaultRowHeight: 23,
-    selections: null,
-    hideBorderOnMouseDownOver: false,
+    // legacy support
+    this.instance = wotInstance;
 
-    //callbacks
-    onCellMouseDown: null,
-    onCellMouseOver: null,
-//    onCellMouseOut: null,
-    onCellDblClick: null,
-    onCellCornerMouseDown: null,
-    onCellCornerDblClick: null,
-    beforeDraw: null,
-    onDraw: null,
-    onScrollVertically: null,
-    onScrollHorizontally: null,
+    // default settings. void 0 means it is required, null means it can be empty
+    this.defaults = {
+      table: void 0,
+      debug: false, // shows WalkontableDebugOverlay
 
-    //constants
-    scrollbarWidth: 10,
-    scrollbarHeight: 10,
+      // presentation mode
+      externalRowCalculator: false,
+      stretchH: 'none', // values: all, last, none
+      currentRowClassName: null,
+      currentColumnClassName: null,
+      preventOverflow: function() {
+        return false;
+      },
 
-    renderAllRows: false
-  };
+      //data source
+      data: void 0,
+      fixedColumnsLeft: 0,
+      fixedRowsTop: 0,
+      fixedRowsBottom: 0,
+      minSpareRows: 0,
 
-  //reference to settings
-  this.settings = {};
-  for (var i in this.defaults) {
-    if (this.defaults.hasOwnProperty(i)) {
-      if (settings[i] !== void 0) {
-        this.settings[i] = settings[i];
-      }
-      else if (this.defaults[i] === void 0) {
-        throw new Error('A required setting "' + i + '" was not provided');
-      }
-      else {
-        this.settings[i] = this.defaults[i];
+      // this must be array of functions: [function (row, TH) {}]
+      rowHeaders: function() {
+        return [];
+      },
+
+      // this must be array of functions: [function (column, TH) {}]
+      columnHeaders: function() {
+        return [];
+      },
+      totalRows: void 0,
+      totalColumns: void 0,
+      cellRenderer: (row, column, TD) => {
+        let cellData = this.getSetting('data', row, column);
+
+        fastInnerText(TD, cellData === void 0 || cellData === null ? '' : cellData);
+      },
+
+      // columnWidth: 50,
+      columnWidth: function(col) {
+        return; //return undefined means use default size for the rendered cell content
+      },
+      rowHeight: function(row) {
+        return; //return undefined means use default size for the rendered cell content
+      },
+      defaultRowHeight: 23,
+      defaultColumnWidth: 50,
+      selections: null,
+      hideBorderOnMouseDownOver: false,
+      viewportRowCalculatorOverride: null,
+      viewportColumnCalculatorOverride: null,
+
+      //callbacks
+      onCellMouseDown: null,
+      onCellMouseOver: null,
+
+      //    onCellMouseOut: null,
+      onCellDblClick: null,
+      onCellCornerMouseDown: null,
+      onCellCornerDblClick: null,
+      beforeDraw: null,
+      onDraw: null,
+      onBeforeDrawBorders: null,
+      onScrollVertically: null,
+      onScrollHorizontally: null,
+      onBeforeTouchScroll: null,
+      onAfterMomentumScroll: null,
+      onBeforeStretchingColumnWidth: (width) => width,
+
+      //constants
+      scrollbarWidth: 10,
+      scrollbarHeight: 10,
+
+      renderAllRows: false,
+      groups: false,
+      rowHeaderWidth: null,
+      columnHeaderHeight: null
+    };
+
+    // reference to settings
+    this.settings = {};
+
+    for (let i in this.defaults) {
+      if (this.defaults.hasOwnProperty(i)) {
+        if (settings[i] !== void 0) {
+          this.settings[i] = settings[i];
+
+        } else if (this.defaults[i] === void 0) {
+          throw new Error('A required setting "' + i + '" was not provided');
+
+        } else {
+          this.settings[i] = this.defaults[i];
+        }
       }
     }
+  }
+
+  /**
+   * Update settings
+   *
+   * @param {Object} settings
+   * @param {*} value
+   * @returns {Walkontable}
+   */
+  update(settings, value) {
+    if (value === void 0) { //settings is object
+      for (let i in settings) {
+        if (settings.hasOwnProperty(i)) {
+          this.settings[i] = settings[i];
+        }
+      }
+    } else { //if value is defined then settings is the key
+      this.settings[settings] = value;
+    }
+    return this.wot;
+  }
+
+  /**
+   * Get setting by name
+   *
+   * @param {String} key
+   * @param {*} param1
+   * @param {*} param2
+   * @param {*} param3
+   * @param {*} param4
+   * @returns {*}
+   */
+  getSetting(key, param1, param2, param3, param4) {
+    if (typeof this.settings[key] === 'function') {
+      // this is faster than .apply - https://github.com/handsontable/handsontable/wiki/JavaScript-&-DOM-performance-tips
+      return this.settings[key](param1, param2, param3, param4);
+
+    } else if (param1 !== void 0 && Array.isArray(this.settings[key])) {
+      // perhaps this can be removed, it is only used in tests
+      return this.settings[key][param1];
+
+    } else {
+      return this.settings[key];
+    }
+  }
+
+  /**
+   * Checks if setting exists
+   *
+   * @param {Boolean} key
+   * @returns {Boolean}
+   */
+  has(key) {
+    return !!this.settings[key];
   }
 }
 
-/**
- * generic methods
- */
+export {WalkontableSettings};
 
-WalkontableSettings.prototype.update = function (settings, value) {
-  if (value === void 0) { //settings is object
-    for (var i in settings) {
-      if (settings.hasOwnProperty(i)) {
-        this.settings[i] = settings[i];
-      }
-    }
-  }
-  else { //if value is defined then settings is the key
-    this.settings[settings] = value;
-  }
-  return this.instance;
-};
-
-WalkontableSettings.prototype.getSetting = function (key, param1, param2, param3, param4) {
-  if (typeof this.settings[key] === 'function') {
-    return this.settings[key](param1, param2, param3, param4); //this is faster than .apply - https://github.com/handsontable/jquery-handsontable/wiki/JavaScript-&-DOM-performance-tips
-  }
-  else if (param1 !== void 0 && Object.prototype.toString.call(this.settings[key]) === '[object Array]') { //perhaps this can be removed, it is only used in tests
-    return this.settings[key][param1];
-  }
-  else {
-    return this.settings[key];
-  }
-};
-
-WalkontableSettings.prototype.has = function (key) {
-  return !!this.settings[key]
-};
+window.WalkontableSettings = WalkontableSettings;

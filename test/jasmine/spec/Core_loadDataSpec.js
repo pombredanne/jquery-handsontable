@@ -38,18 +38,30 @@ describe('Core_loadData', function () {
 
   var arrayOfNestedObjects = function () {
     return [
-      {id: 1, name: {
-        first: "Ted",
-        last: "Right"
-      }},
-      {id: 2, name: {
-        first: "Frank",
-        last: "Honest"
-      }},
-      {id: 3, name: {
-        first: "Joan",
-        last: "Well"
-      }}
+      {
+        id: 1,
+        name: {
+          first: "Ted",
+          last: "Right"
+        },
+        'full.street': 'Street I',
+      },
+      {
+        id: 2,
+        name: {
+          first: "Frank",
+          last: "Honest"
+        },
+        'full.street': 'Street II',
+      },
+      {
+        id: 3,
+        name: {
+          first: "Joan",
+          last: "Well"
+        },
+        'full.street': 'Street III',
+      }
     ]
   };
 
@@ -75,6 +87,28 @@ describe('Core_loadData', function () {
     expect(getDataAtCell(0, 2)).toEqual("Ted");
   });
 
+  it('should allow array of objects when columns as a function', function () {
+    handsontable({
+      columns: function(column) {
+        var colMeta = {};
+
+        if (column === 0) {
+          colMeta.data = 'id';
+        } else if (column === 1) {
+          colMeta.data = 'lastName';
+        } else if (column === 2) {
+          colMeta.data = 'name';
+        } else {
+          colMeta = null;
+        }
+
+        return colMeta;
+      }
+    });
+    loadData(arrayOfObjects());
+    expect(getDataAtCell(0, 2)).toEqual("Ted");
+  });
+
   it('should allow array of nested objects', function () {
     handsontable({
       data: arrayOfNestedObjects(),
@@ -82,10 +116,40 @@ describe('Core_loadData', function () {
       columns: [
         {data: "id"},
         {data: "name.last"},
-        {data: "name.first"}
+        {data: "name.first"},
+        {data: "full.street"},
       ]
     });
     expect(getDataAtCell(0, 2)).toEqual("Ted");
+    expect(getDataAtCell(1, 3)).toEqual("Street II");
+    expect(getDataAtRowProp(2, 'full.street')).toEqual("Street III");
+  });
+
+  it('should allow array of nested objects when columns as a function', function () {
+    handsontable({
+      data: arrayOfNestedObjects(),
+      colHeaders: true,
+      columns: function(column) {
+        var colMeta = {};
+
+        if (column === 0) {
+          colMeta.data = 'id';
+        } else if (column === 1) {
+          colMeta.data = 'name.last';
+        } else if (column === 2) {
+          colMeta.data = 'name.first';
+        } else if (column === 3) {
+          colMeta.data = 'full.street';
+        } else {
+          colMeta = null;
+        }
+
+        return colMeta;
+      }
+    });
+    expect(getDataAtCell(0, 2)).toEqual("Ted");
+    expect(getDataAtCell(1, 3)).toEqual("Street II");
+    expect(getDataAtRowProp(2, 'full.street')).toEqual("Street III");
   });
 
   it('should figure out default column names for array of nested objects', function () {
@@ -100,7 +164,7 @@ describe('Core_loadData', function () {
     var called = false;
 
     handsontable({
-      onChange: function (changes, source) {
+      afterChange: function (changes, source) {
         if (source === 'loadData') {
           called = true;
         }
@@ -115,7 +179,7 @@ describe('Core_loadData', function () {
     var called = false;
 
     handsontable({
-      onChange: function (changes, source) {
+      afterChange: function (changes, source) {
         if (source === 'loadData') {
           called = true;
         }
@@ -130,7 +194,7 @@ describe('Core_loadData', function () {
     var called = false;
 
     handsontable({
-      onChange: function (changes, source) {
+      afterChange: function (changes, source) {
         if (source === 'loadData') {
           called = true;
         }
@@ -175,16 +239,33 @@ describe('Core_loadData', function () {
     expect(getCell(9, 1).innerHTML).toEqual('Eve');
   });
 
-  //https://github.com/handsontable/jquery-handsontable/pull/233
-  it('Should not invoke the cells callback multiple times with the same row/col', function () {
+  //https://github.com/handsontable/handsontable/pull/233
+  it('should not invoke the cells callback multiple times with the same row/col (without overlays)', function () {
     var cellsSpy = jasmine.createSpy('cellsSpy');
 
     handsontable({
       data: arrayOfNestedObjects(),
-      colWidths: [90, 90, 90], //need to define colWidths, otherwise HandsontableAutoColumnSize will call cells() too
+      colWidths: [90, 90, 90, 90],
+      rowHeights: [23, 23, 23, 23],
       cells: cellsSpy
     });
-    expect(cellsSpy.calls.length).toEqual(countRows() * countCols() + countCols()); //+ countCols() is to get column width information
+    //
+    expect(cellsSpy.calls.length).toEqual(43);
+  });
+
+  it('should not invoke the cells callback multiple times with the same row/col (with overlays)', function () {
+    var cellsSpy = jasmine.createSpy('cellsSpy');
+
+    handsontable({
+      data: arrayOfNestedObjects(),
+      colHeaders: true,
+      rowHeaders: true,
+      colWidths: [90, 90, 90, 90],
+      rowHeights: [90, 90, 90, 90],
+      cells: cellsSpy
+    });
+
+    expect(cellsSpy.calls.length).toEqual(56);
   });
 
   it('should remove grid rows if new data source has less of them', function () {
@@ -292,6 +373,27 @@ describe('Core_loadData', function () {
     expect(countCols()).toBe(2);
   });
 
+  it('should only have as many columns as in settings when columns is a function', function () {
+    var data1 = arrayOfArrays();
+
+    handsontable({
+      data: data1,
+      columns: function(column) {
+        var colMeta = {
+          data: column
+        };
+
+        if ([1, 3].indexOf(column) < 0) {
+          colMeta = null
+        }
+
+        return colMeta;
+      }
+    });
+
+    expect(countCols()).toBe(2);
+  });
+
   it('should throw error when trying to load a string (constructor)', function () {
     var errors = 0;
 
@@ -331,7 +433,6 @@ describe('Core_loadData', function () {
       // Backbone.Collection doesn't support `splice`, yet! Easy to add.
       splice: hacked_splice
     });
-
     var cars = new CarCollection();
 
     cars.add([
@@ -354,6 +455,65 @@ describe('Core_loadData', function () {
       var args = _.toArray(arguments).slice(2).concat({at: index}),
         removed = this.models.slice(index, index + howMany);
       this.remove(removed).add.apply(this, args);
+
+      return removed;
+    }
+
+    // normally, you'd get these from the server with .fetch()
+    function attr(attr) {
+      // this lets us remember `attr` for when when it is get/set
+      return {data: function (car, value) {
+        if (_.isUndefined(value)) {
+          return car.get(attr);
+        }
+        car.set(attr, value);
+      }};
+    }
+
+    expect(countRows()).toBe(3);
+  });
+
+  it('should load Backbone Collection as data source when columns is a function', function () {
+    // code borrowed from demo/backbone.js
+
+    var CarModel = Backbone.Model.extend({});
+
+    var CarCollection = Backbone.Collection.extend({
+      model: CarModel,
+      // Backbone.Collection doesn't support `splice`, yet! Easy to add.
+      splice: hacked_splice
+    });
+    var cars = new CarCollection();
+
+    cars.add([
+      {make: "Dodge", model: "Ram", year: 2012, weight: 6811},
+      {make: "Toyota", model: "Camry", year: 2012, weight: 3190},
+      {make: "Smart", model: "Fortwo", year: 2012, weight: 1808}
+    ]);
+
+    handsontable({
+      data: cars,
+      columns: function(column) {
+        var colMeta = null;
+
+        if (column === 0) {
+          colMeta = attr("make");
+        } else if (column === 1) {
+          colMeta = attr("model");
+        } else if (column === 2) {
+          colMeta = attr("year");
+        }
+
+        return colMeta;
+      }
+    });
+
+    // use the "good" Collection methods to emulate Array.splice
+    function hacked_splice(index, howMany /* model1, ... modelN */) {
+      var args = _.toArray(arguments).slice(2).concat({at: index}),
+        removed = this.models.slice(index, index + howMany);
+      this.remove(removed).add.apply(this, args);
+
       return removed;
     }
 
@@ -397,6 +557,73 @@ describe('Core_loadData', function () {
 
     expect(this.$container.find('tbody tr:eq(0) td:eq(0)').hasClass('htInvalid')).toEqual(false);
 
+  });
+
+  // https://github.com/handsontable/handsontable/issues/1700
+  // can't edit anything after starting editing cell with no nested object
+  it('should correct behave with cell with no nested object data source corresponding to column mapping', function () {
+
+    var objectData = [
+      {id: 1, user: {name: {first: "Ted", last: "Right"}}},
+      {id: 2, user: {name: {}}},
+      {id: 3}
+    ];
+
+    handsontable({
+      data: objectData,
+      columns: [
+        {data: 'id'},
+        {data: 'user.name.first'},
+        {data: 'user.name.last'}
+      ]
+    });
+
+    mouseDoubleClick(getCell(1, 1));
+    document.activeElement.value = 'Harry';
+    deselectCell();
+    expect(objectData[1].user.name.first).toEqual('Harry');
+
+    mouseDoubleClick(getCell(2, 1));
+    document.activeElement.value = 'Barry';
+    deselectCell();
+    expect(objectData[2].user.name.first).toEqual('Barry');
+  });
+
+  it('should correct behave with cell with no nested object data source corresponding to column mapping when columns is a function', function () {
+
+    var objectData = [
+      {id: 1, user: {name: {first: "Ted", last: "Right"}}},
+      {id: 2, user: {name: {}}},
+      {id: 3}
+    ];
+
+    handsontable({
+      data: objectData,
+      columns: function(column) {
+        var colMeta = null;
+
+        if (column === 0) {
+          colMeta = {data: 'id'}
+
+        } else if (column === 1) {
+          colMeta = {data: 'user.name.first'};
+        } else if (column === 2) {
+          colMeta = {data: 'user.name.last'};
+        }
+
+        return colMeta;
+      }
+    });
+
+    mouseDoubleClick(getCell(1, 1));
+    document.activeElement.value = 'Harry';
+    deselectCell();
+    expect(objectData[1].user.name.first).toEqual('Harry');
+
+    mouseDoubleClick(getCell(2, 1));
+    document.activeElement.value = 'Barry';
+    deselectCell();
+    expect(objectData[2].user.name.first).toEqual('Barry');
   });
 
 });

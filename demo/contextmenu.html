@@ -7,9 +7,14 @@
   <!--
   Loading Handsontable (full distribution that includes all dependencies apart from jQuery)
   -->
-  <script data-jsfiddle="common" src="../lib/jquery.min.js"></script>
-  <script data-jsfiddle="common" src="../dist/jquery.handsontable.full.js"></script>
-  <link data-jsfiddle="common" rel="stylesheet" media="screen" href="../dist/jquery.handsontable.full.css">
+  <link data-jsfiddle="common" rel="stylesheet" media="screen" href="../dist/handsontable.css">
+  <link data-jsfiddle="common" rel="stylesheet" media="screen" href="../dist/pikaday/pikaday.css">
+  <script data-jsfiddle="common" src="../dist/pikaday/pikaday.js"></script>
+  <script data-jsfiddle="common" src="../dist/moment/moment.js"></script>
+  <script data-jsfiddle="common" src="../dist/zeroclipboard/ZeroClipboard.js"></script>
+  <script data-jsfiddle="common" src="../dist/numbro/numbro.js"></script>
+  <script data-jsfiddle="common" src="../dist/numbro/languages.js"></script>
+  <script data-jsfiddle="common" src="../dist/handsontable.js"></script>
 
   <!--
   Loading demo dependencies. They are used here only to enhance the examples on this page
@@ -84,7 +89,7 @@
       <div id="example1"></div>
 
       <p>
-        <button name="dump" data-dump="#example1" title="Prints current data source to Firebug/Chrome Dev Tools">Dump
+        <button name="dump" data-dump="#example1" data-instance="hot1" title="Prints current data source to Firebug/Chrome Dev Tools">Dump
           data to console
         </button>
       </p>
@@ -100,16 +105,20 @@
       <script data-jsfiddle="common">
         function getData() {
           return [
-            ["", "Kia", "Nissan", "Toyota", "Honda"],
-            ["2008", 10, 11, 12, 13],
-            ["2009", 20, 11, 14, 13],
-            ["2010", 30, 15, 12, 13]
+            ['', 'Kia', 'Nissan', 'Toyota', 'Honda'],
+            ['2008', 10, 11, 12, 13],
+            ['2009', 20, 11, 14, 13],
+            ['2010', 30, 15, 12, 13]
           ];
         }
       </script>
 
       <script data-jsfiddle="example1">
-        $("#example1").handsontable({
+        var example1 = document.getElementById('example1'),
+          settings1,
+          hot1;
+
+        settings1 = {
           data: getData(),
           startRows: 5,
           startCols: 5,
@@ -121,7 +130,8 @@
           colHeaders: true,
           minSpareRows: 1,
           contextMenu: true
-        });
+        };
+        hot1 = new Handsontable(example1, settings1);
       </script>
     </div>
   </div>
@@ -137,23 +147,28 @@
       <p>You can limit options available in the context menu using contextMenu option as an array of strings:</p>
 
       <ul>
-        <li>row_above</li>
-        <li>row_below</li>
-        <li>hsep1</li>
-        <li>col_left</li>
-        <li>col_right</li>
-        <li>hsep2</li>
-        <li>remove_row</li>
-        <li>remove_col</li>
-        <li>hsep3</li>
-        <li>undo</li>
-        <li>redo</li>
+        <li><b>row_above</b> (designed for <a href="contextmenu.html">Context Menu</a>)</li>
+        <li><b>row_below</b> (designed for <a href="contextmenu.html">Context Menu</a>)</li>
+        <li><b>hsep1</b></li>
+        <li><b>col_left</b> (designed for both menus)</li>
+        <li><b>col_right</b> (designed for both menus)</li>
+        <li><b>hsep2</b></li>
+        <li><b>remove_row</b> (designed for <a href="contextmenu.html">Context Menu</a>)</li>
+        <li><b>remove_col</b> (designed for both menus)</li>
+        <li><b>hsep3</b></li>
+        <li><b>undo</b> (designed for <a href="contextmenu.html">Context Menu</a>)</li>
+        <li><b>redo</b> (designed for <a href="contextmenu.html">Context Menu</a>)</li>
+        <li><b>make_read_only</b> (designed for both menus)</li>
+        <li><b>alignment</b>  (designed for both menus)</li>
+        <li><b>clear_column</b> (designed for <a href="dropdownmenu.html">Dropdown Menu</a>)</li>
+        <li><b>borders</b> (only with <a href="custom_borders.html">Custom Borders</a> turned on)</li>
+        <li><b>commentsAddEdit</b>, <b>commentsRemove</b> (only with <a href="comments.html">Comments</a> turned on)</li>
       </ul>
 
       <div id="example2"></div>
 
       <p>
-        <button name="dump" data-dump="#example2" title="Prints current data source to Firebug/Chrome Dev Tools">Dump
+        <button name="dump" data-dump="#example2" data-instance="hot2" title="Prints current data source to Firebug/Chrome Dev Tools">Dump
           data to console
         </button>
       </p>
@@ -167,7 +182,8 @@
       </div>
 
       <script data-jsfiddle="example2">
-        $("#example2").handsontable({
+        var example2 = document.getElementById('example2');
+        var settings2 = {
           data: getData(),
           startRows: 5,
           startCols: 5,
@@ -175,7 +191,8 @@
           colHeaders: true,
           minSpareRows: 1,
           contextMenu: ['row_above', 'row_below', 'remove_row']
-        });
+        };
+        var hot2 = new Handsontable(example2, settings2);
       </script>
     </div>
   </div>
@@ -197,7 +214,7 @@
       <div id="example3"></div>
 
       <p>
-        <button name="dump" data-dump="#example3" title="Prints current data source to Firebug/Chrome Dev Tools">Dump
+        <button name="dump" data-dump="#example3" data-instance="hot3" title="Prints current data source to Firebug/Chrome Dev Tools">Dump
           data to console
         </button>
       </p>
@@ -211,13 +228,19 @@
       </div>
 
       <script data-jsfiddle="example3">
-        $("#example3").handsontable({
+        var example3 = document.getElementById('example3');
+        var settings3 = {
           data: getData(),
           startRows: 5,
           startCols: 5,
           rowHeaders: true,
           colHeaders: true,
-          minSpareRows: 1,
+          minSpareRows: 1
+        };
+
+        var hot3 = new Handsontable(example3,settings3);
+
+        hot3.updateSettings({
           contextMenu: {
             callback: function (key, options) {
               if (key === 'about') {
@@ -231,7 +254,7 @@
               "row_above": {
                 disabled: function () {
                   //if first row, disable this option
-                  return ($("#example3").handsontable('getSelected')[0] === 0);
+                  return (hot3.getSelected() && hot3.getSelected()[0]===0)
                 }
               },
               "row_below": {},
@@ -240,21 +263,20 @@
                 name: 'Remove this row, ok?',
                 disabled: function () {
                   //if first row, disable this option
-                  return ($("#example3").handsontable('getSelected')[0] === 0);
+                  return  (hot3.getSelected() && hot3.getSelected()[0] === 0)
                 }
               },
               "hsep2": "---------",
               "about": {name: 'About this menu'}
             }
           }
-        });
+        })
       </script>
     </div>
   </div>
 </div>
 
-<div class="footer-text">Handsontable &copy; 2012-2014 Marcin Warpechowski and contributors.<br> Code and documentation
-  licensed under the The MIT License.
+<div class="footer-text">
 </div>
 </div>
 

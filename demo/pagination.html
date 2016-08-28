@@ -5,11 +5,16 @@
   <title>Pagination - Handsontable</title>
 
   <!--
-  Loading Handsontable (full distribution that includes all dependencies apart from jQuery)
+  Loading Handsontable (full distribution that includes all dependencies)
   -->
-  <script data-jsfiddle="common" src="../lib/jquery.min.js"></script>
-  <script data-jsfiddle="common" src="../dist/jquery.handsontable.full.js"></script>
-  <link data-jsfiddle="common" rel="stylesheet" media="screen" href="../dist/jquery.handsontable.full.css">
+  <link data-jsfiddle="common" rel="stylesheet" media="screen" href="../dist/handsontable.css">
+  <link data-jsfiddle="common" rel="stylesheet" media="screen" href="../dist/pikaday/pikaday.css">
+  <script data-jsfiddle="common" src="../dist/pikaday/pikaday.js"></script>
+  <script data-jsfiddle="common" src="../dist/moment/moment.js"></script>
+  <script data-jsfiddle="common" src="../dist/zeroclipboard/ZeroClipboard.js"></script>
+  <script data-jsfiddle="common" src="../dist/numbro/numbro.js"></script>
+  <script data-jsfiddle="common" src="../dist/numbro/languages.js"></script>
+  <script data-jsfiddle="common" src="../dist/handsontable.js"></script>
 
   <!--
   Loading demo dependencies. They are used here only to enhance the examples on this page
@@ -70,7 +75,7 @@
           </div>
 
           <p>
-            <button name="dump" data-dump="#example1" title="Prints current data source to Firebug/Chrome Dev Tools">
+            <button name="dump" data-dump="#example1" data-instance="hot" title="Prints current data source to Firebug/Chrome Dev Tools">
               Dump
               data to console
             </button>
@@ -113,16 +118,16 @@
                     [1,2,4,5,6,7,8,9,0],[0,0,0,0,0,0,0,0,0,0],[1,2,3,4,5,6,7,8,9,0],
                     [0,0,0,0,0,0,0,0,0],[1,2,3,4,5,6,7,8,9,0],[0,0,0,0,0,0,0,0,0,0],
                     [0,0,0,0,0,0,0,0,0],[1,2,3,4,5,6,7,8,9,0],[0,0,0,0,0,0,0,0,0,0]
-                  ];
+                ];
 
               return function () {
-                var page  = parseInt(window.location.hash.replace('#', ''), 10) || 1
-                  , limit = 6
-                  , row   = (page - 1) * limit
-                  , count = page * limit
-                  , part  = [];
+                var page  = parseInt(window.location.hash.replace('#', ''), 10) || 1,
+                  limit = 6,
+                  row   = (page - 1) * limit,
+                  count = page * limit,
+                  part  = [];
 
-                for(;row < count;row++) {
+                for (;row < count;row++) {
                   part.push(data[row]);
                 }
 
@@ -130,22 +135,23 @@
               }
             })();
 
-            $("#example1").handsontable({
+            var container = document.getElementById('example1'),
+              hot;
+
+            hot = new Handsontable(container, {
               data: getData(),
               colHeaders: true
             });
 
-            $(window).on('hashchange',  function (event) {
-              $("#example1").handsontable('loadData', getData());
+            Handsontable.Dom.addEvent(window, 'hashchange', function (event) {
+              hot.loadData(getData());
             });
-
           </script>
         </div>
       </div>
     </div>
 
-        <div class="footer-text">Handsontable &copy; 2012-2014 Marcin Warpechowski and contributors.<br> Code and documentation
-          licensed under the The MIT License.
+        <div class="footer-text">
         </div>
       </div>
 

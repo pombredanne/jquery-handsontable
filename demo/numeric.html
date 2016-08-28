@@ -5,12 +5,16 @@
   <title>Numeric cell type - Handsontable</title>
 
   <!--
-  Loading Handsontable (full distribution that includes all dependencies apart from jQuery)
+  Loading Handsontable (full distribution that includes all dependencies)
   -->
-  <script data-jsfiddle="common" src="../lib/jquery.min.js"></script>
-  <script data-jsfiddle="common" src="../dist/jquery.handsontable.full.js"></script>
-  <script data-jsfiddle="common" src="../lib/numeral.de-de.js"></script>
-  <link data-jsfiddle="common" rel="stylesheet" media="screen" href="../dist/jquery.handsontable.full.css">
+  <link data-jsfiddle="common" rel="stylesheet" media="screen" href="../dist/handsontable.css">
+  <link data-jsfiddle="common" rel="stylesheet" media="screen" href="../dist/pikaday/pikaday.css">
+  <script data-jsfiddle="common" src="../dist/pikaday/pikaday.js"></script>
+  <script data-jsfiddle="common" src="../dist/moment/moment.js"></script>
+  <script data-jsfiddle="common" src="../dist/zeroclipboard/ZeroClipboard.js"></script>
+  <script data-jsfiddle="common" src="../dist/numbro/numbro.js"></script>
+  <script data-jsfiddle="common" src="../dist/numbro/languages.js"></script>
+  <script data-jsfiddle="common" src="../dist/handsontable.js"></script>
 
   <!--
   Loading demo dependencies. They are used here only to enhance the examples on this page
@@ -42,11 +46,11 @@
   <script data-jsfiddle="common">
     function getCarData() {
       return [
-        {car: "Mercedes A 160", year: 2006, price: 6999.99},
-        {car: "Citroen C4 Coupe", year: 2008, price: 8330},
-        {car: "Audi A4 Avant", year: 2011, price: 33900},
-        {car: "Opel Astra", year: 2004, price: 7000},
-        {car: "BMW 320i Coupe", year: 2011, price: 30500}
+        {car: "Mercedes A 160", year: 2006, price_usd: 6999.99, price_eur: 6999.99},
+        {car: "Citroen C4 Coupe", year: 2008, price_usd: 8330, price_eur: 8330},
+        {car: "Audi A4 Avant", year: 2011, price_usd: 33900, price_eur: 33900},
+        {car: "Opel Astra", year: 2004, price_usd: 7000, price_eur: 7000},
+        {car: "BMW 320i Coupe", year: 2011, price_usd: 30500, price_eur: 30500}
       ];
     }
   </script>
@@ -82,17 +86,17 @@
             or
             <code>cells</code> function.</p>
 
-          <p>Numeric cell type uses <a href="http://numeraljs.com/">Numeral.js</a> as the formatting library. Head over
+          <p>Numeric cell type uses <a href="http://numbrojs.com/">Numbro.js</a> as the formatting library. Head over
             to
             their website to learn about the formatting syntax.</p>
 
-          <p>To use number formatting style valid for your language (i18n), load language definition to Numeral.js. See
-            "Languages" section in <a href="http://numeraljs.com/">Numeral.js docs</a> for more info.</p>
+          <p>To use number formatting style valid for your language (i18n), load language definition to Numbro.js. See
+            "Languages" section in <a href="http://numbrojs.com/">Numbro.js docs</a> for more info.</p>
 
           <div id="example1"></div>
 
           <p>
-            <button name="dump" data-dump="#example1" title="Prints current data source to Firebug/Chrome Dev Tools">
+            <button name="dump" data-dump="#example1" data-instance="hot" title="Prints current data source to Firebug/Chrome Dev Tools">
               Dump
               data to console
             </button>
@@ -107,33 +111,36 @@
           </div>
 
           <script data-jsfiddle="example1">
-            $("#example1").handsontable({
+            var container = document.getElementById('example1'),
+              hot;
+
+            hot = new Handsontable(container, {
               data: getCarData(),
               startRows: 7,
               startCols: 4,
-              colHeaders: ["Car", "Year", "Price ($)", "Price (€)"],
+              colHeaders: ['Car', 'Year', 'Price ($)', 'Price (€)'],
               columnSorting: true,
               columns: [
                 {
-                  data: "car"
-                  //1nd column is simple text, no special options here
+                  data: 'car'
+                  // 1nd column is simple text, no special options here
                 },
                 {
-                  data: "year",
+                  data: 'year',
                   type: 'numeric'
                 },
                 {
-                  data: "price",
+                  data: 'price_usd',
                   type: 'numeric',
                   format: '$0,0.00',
-                  language: 'en' //this is the default locale, set up for USD
+                  language: 'en-US' // this is the default locale, set up for USD
                 },
                 {
-                  data: "price",
+                  data: 'price_eur',
                   type: 'numeric',
                   format: '0,0.00 $',
-                  language: 'de' //i18n: use this for EUR (German)
-                  //more locales available on numeraljs.com
+                  language: 'de-DE' // i18n: use this for EUR (German)
+                  // more locales available on numeraljs.com
                 }
               ]
             });
@@ -142,8 +149,7 @@
       </div>
     </div>
 
-        <div class="footer-text">Handsontable &copy; 2012-2014 Marcin Warpechowski and contributors.<br> Code and documentation
-          licensed under the The MIT License.
+        <div class="footer-text">
         </div>
       </div>
 

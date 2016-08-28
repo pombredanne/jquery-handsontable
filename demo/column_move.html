@@ -2,14 +2,19 @@
 <html>
 <head>
   <meta charset='utf-8'>
-  <title>Column move - Handsontable</title>
+  <title>Column &amp; row move - Handsontable</title>
 
   <!--
   Loading Handsontable (full distribution that includes all dependencies apart from jQuery)
   -->
-  <script data-jsfiddle="common" src="../lib/jquery.min.js"></script>
-  <script data-jsfiddle="common" src="../dist/jquery.handsontable.full.js"></script>
-  <link data-jsfiddle="common" rel="stylesheet" media="screen" href="../dist/jquery.handsontable.full.css">
+  <link data-jsfiddle="common" rel="stylesheet" media="screen" href="../dist/handsontable.css">
+  <link data-jsfiddle="common" rel="stylesheet" media="screen" href="../dist/pikaday/pikaday.css">
+  <script data-jsfiddle="common" src="../dist/pikaday/pikaday.js"></script>
+  <script data-jsfiddle="common" src="../dist/moment/moment.js"></script>
+  <script data-jsfiddle="common" src="../dist/zeroclipboard/ZeroClipboard.js"></script>
+  <script data-jsfiddle="common" src="../dist/numbro/numbro.js"></script>
+  <script data-jsfiddle="common" src="../dist/numbro/languages.js"></script>
+  <script data-jsfiddle="common" src="../dist/handsontable.js"></script>
 
   <!--
   Loading demo dependencies. They are used here only to enhance the examples on this page
@@ -37,24 +42,6 @@
   Google Analytics for GitHub Page. Don't copy this to your project :)
   -->
   <script src="js/ga.js"></script>
-
-  <script data-jsfiddle="common">
-    function createBigData() {
-      var rows = []
-        , i
-        , j;
-
-      for (i = 0; i < 1000; i++) {
-        var row = [];
-        for (j = 0; j < 10; j++) {
-          row.push(Handsontable.helper.spreadsheetColumnLabel(j) + i);
-        }
-        rows.push(row);
-      }
-
-      return rows;
-    }
-  </script>
 </head>
 
 <body>
@@ -73,15 +60,20 @@
         <div class="rowLayout">
           <div class="descLayout">
             <div class="pad" data-jsfiddle="example1">
-              <h2>Column move</h2>
+              <h2>Column &amp; row move</h2>
 
-              <p>To enable this experimental feature, use setting <code>manualColumnMove: true</code></p>
+              <p>To enable these features, use settings <code>manualColumnMove: true</code> and <code>manualRowMove: true</code></p>
 
-              <p>In the left part of column header a draggable column move handle will appear.</p>
+              <p>The draggable move handle appears:</p>
 
-              <div class="state-loaded example1 alert">State of the table has been restored. <button class="mini reset-state2">Reset table state</button></div>
+              <ul>
+                <li>in the right part of the column header,</li>
+                <li>in the top part of the row header.</li>
+              </ul>
 
-              <div id="example1" style="width: 400px; height: 300px; overflow: scroll"></div>
+              <div class="state-loaded example1 alert">State of the table has been restored. <button class="mini reset-state1">Reset table state</button></div>
+
+              <div id="example1" style="width: 400px; height: 300px; overflow: hidden;"></div>
             </div>
           </div>
 
@@ -92,17 +84,19 @@
               </div>
 
               <script data-jsfiddle="example1">
-                $("#example1").handsontable({
-                  data: createBigData(),
+                var example1 = document.getElementById('example1'),
+                  hot;
+
+                hot = new Handsontable(example1, {
+                  data: Handsontable.helper.createSpreadsheetData(1000, 10),
                   rowHeaders: true,
                   colHeaders: true,
                   colWidths: [55, 80, 80, 80, 80, 80, 80],
                   manualColumnMove: true,
-                  manualColumnResize: true,
+                  manualRowMove: true,
                   minSpareRows: 1,
                   persistentState: true
                 });
-
               </script>
 
             </div>
@@ -112,38 +106,36 @@
 
 
         <script type="text/javascript">
-          (function(){
-            var HOT = $('#example1').handsontable('getInstance');
+          (function(hot){
+            var reset = document.querySelector('.reset-state1'),
+              stateLoaded = document.querySelector('.state-loaded'),
+              storedData = {},
+              savedKeys;
 
-            $('.reset-state1').on('click', function(){
-
-              HOT.runHooks('persistentStateReset');
-
-              HOT.updateSettings({
+            Handsontable.Dom.addEvent(reset, 'click', function(){
+              hot.runHooks('persistentStateReset');
+              hot.updateSettings({
+                manualColumnMove: true,
+                manualRowMove: true,
                 manualColumnResize: true,
                 manualRowResize: true
               });
-
-              $(".state-loaded.example1").fadeOut(300);
+              stateLoaded.style.display = 'none';
+              hot.render();
             });
 
+            hot.runHooks('persistentStateLoad', '_persistentStateKeys', storedData);
+            savedKeys = storedData.value;
 
-            var storedData = {};
-
-            HOT.runHooks('persistentStateLoad', '_persistentStateKeys', storedData);
-
-            var savedKeys = storedData.value;
-
-            if(savedKeys && savedKeys.length > 0){
-              $(".state-loaded.example1").show();
-              HOT.render();
+            if (savedKeys && savedKeys.length > 0) {
+              stateLoaded.style.display = 'block';
+              hot.render();
             }
-          })();
+          })(hot);
 
         </script>
 
-        <div class="footer-text">Handsontable &copy; 2012 Marcin Warpechowski and contributors.<br> Code and documentation
-          licensed under the The MIT License.
+        <div class="footer-text">
         </div>
       </div>
 

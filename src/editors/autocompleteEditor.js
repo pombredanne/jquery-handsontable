@@ -1,219 +1,394 @@
-(function (Handsontable) {
-  var AutocompleteEditor = Handsontable.editors.HandsontableEditor.prototype.extend();
+import Handsontable from './../browser';
+import {KEY_CODES, isPrintableChar} from './../helpers/unicode';
+import {stringify} from './../helpers/mixed';
+import {pivot} from './../helpers/array';
+import {
+  addClass,
+  getCaretPosition,
+  getScrollbarWidth,
+  getSelectionEndPosition,
+  outerWidth,
+  outerHeight,
+  offset,
+  getTrimmingContainer,
+  setCaretPosition,
+} from './../helpers/dom/element';
+import {registerEditor} from './../editors';
+import {HandsontableEditor} from './handsontableEditor';
 
-  AutocompleteEditor.prototype.init = function () {
-    Handsontable.editors.HandsontableEditor.prototype.init.apply(this, arguments);
-    this.$htContainer.handsontable('updateSettings', {height: this.getDropdownHeight()});
+var AutocompleteEditor = HandsontableEditor.prototype.extend();
 
-    this.query = null;
-    this.choices = [];
-  };
+/**
+ * @private
+ * @editor AutocompleteEditor
+ * @class AutocompleteEditor
+ * @dependencies HandsontableEditor
+ */
+AutocompleteEditor.prototype.init = function() {
+  HandsontableEditor.prototype.init.apply(this, arguments);
 
-  AutocompleteEditor.prototype.createElements = function(){
-    Handsontable.editors.HandsontableEditor.prototype.createElements.apply(this, arguments);
+  this.query = null;
+  this.choices = [];
+};
 
-    this.$htContainer.addClass('autocompleteEditor');
+AutocompleteEditor.prototype.createElements = function() {
+  HandsontableEditor.prototype.createElements.apply(this, arguments);
 
-  };
+  addClass(this.htContainer, 'autocompleteEditor');
+  addClass(this.htContainer, window.navigator.platform.indexOf('Mac') === -1 ? '' : 'htMacScroll');
+};
 
-  AutocompleteEditor.prototype.bindEvents = function(){
+var skipOne = false;
+function onBeforeKeyDown(event) {
+  skipOne = false;
+  let editor = this.getActiveEditor();
 
-    var that = this;
-    this.$textarea.on('keydown.autocompleteEditor', function(event){
-      if(!Handsontable.helper.isMetaKey(event.keyCode) || [Handsontable.helper.keyCode.BACKSPACE, Handsontable.helper.keyCode.DELETE].indexOf(event.keyCode) != -1){
-        setTimeout(function () {
-          that.queryChoices(that.$textarea.val());
-        });
-      } else if (event.keyCode == Handsontable.helper.keyCode.ENTER && that.cellProperties.strict !== true){
-        that.$htContainer.handsontable('deselectCell');
-      }
+  if (isPrintableChar(event.keyCode) || event.keyCode === KEY_CODES.BACKSPACE ||
+    event.keyCode === KEY_CODES.DELETE || event.keyCode === KEY_CODES.INSERT) {
+    let timeOffset = 0;
 
-    });
+    // on ctl+c / cmd+c don't update suggestion list
+    if (event.keyCode === KEY_CODES.C && (event.ctrlKey || event.metaKey)) {
+      return;
+    }
+    if (!editor.isOpened()) {
+      timeOffset += 10;
+    }
 
-    this.$htContainer.on('mouseleave', function () {
-      if(that.cellProperties.strict === true){
-        that.highlightBestMatchingChoice();
-      }
-    });
+    if (editor.htEditor) {
+      editor.instance._registerTimeout(setTimeout(function() {
+        editor.queryChoices(editor.TEXTAREA.value);
+        skipOne = true;
+      }, timeOffset));
+    }
+  }
+}
 
-    this.$htContainer.on('mouseenter', function () {
-      that.$htContainer.handsontable('deselectCell');
-    });
+AutocompleteEditor.prototype.prepare = function() {
+  this.instance.addHook('beforeKeyDown', onBeforeKeyDown);
+  HandsontableEditor.prototype.prepare.apply(this, arguments);
+};
 
-    Handsontable.editors.HandsontableEditor.prototype.bindEvents.apply(this, arguments);
+AutocompleteEditor.prototype.open = function() {
+  // Ugly fix for handsontable which grab window object for autocomplete scroll listener instead table element.
+  this.TEXTAREA_PARENT.style.overflow = 'auto';
+  HandsontableEditor.prototype.open.apply(this, arguments);
+  this.TEXTAREA_PARENT.style.overflow = '';
 
-  };
+  let choicesListHot = this.htEditor.getInstance();
+  let _this = this;
+  let trimDropdown = this.cellProperties.trimDropdown === void 0 ? true : this.cellProperties.trimDropdown;
 
-  var onBeforeKeyDownInner;
+  this.TEXTAREA.style.visibility = 'visible';
+  this.focus();
 
-  AutocompleteEditor.prototype.open = function () {
+  choicesListHot.updateSettings({
+    colWidths: trimDropdown ? [outerWidth(this.TEXTAREA) - 2] : void 0,
+    width: trimDropdown ? outerWidth(this.TEXTAREA) + getScrollbarWidth() + 2 : void 0,
+    afterRenderer: function(TD, row, col, prop, value) {
+      let caseSensitive = this.getCellMeta(row, col).filteringCaseSensitive === true;
+      let indexOfMatch;
+      let match;
+      value = stringify(value);
 
-    Handsontable.editors.HandsontableEditor.prototype.open.apply(this, arguments);
+      if (value) {
+        indexOfMatch = caseSensitive ? value.indexOf(this.query) : value.toLowerCase().indexOf(_this.query.toLowerCase());
 
-    this.$textarea[0].style.visibility = 'visible';
-    this.focus();
-
-    var choicesListHot =  this.$htContainer.handsontable('getInstance');
-    var that = this;
-    choicesListHot.updateSettings({
-      'colWidths': [Handsontable.Dom.outerWidth(this.TEXTAREA) - 2],
-      afterRenderer: function (TD, row, col, prop, value) {
-        var caseSensitive = this.getCellMeta(row, col).filteringCaseSensitive === true;
-        var indexOfMatch =  caseSensitive ? value.indexOf(this.query) : value.toLowerCase().indexOf(that.query.toLowerCase());
-
-        if(indexOfMatch != -1){
-          var match = value.substr(indexOfMatch, that.query.length);
+        if (indexOfMatch != -1) {
+          match = value.substr(indexOfMatch, _this.query.length);
           TD.innerHTML = value.replace(match, '<strong>' + match + '</strong>');
         }
       }
+    },
+    autoColumnSize: true,
+    modifyColWidth: function(width, col) {
+      // workaround for <strong> text overlapping the dropdown, not really accurate
+      let autoWidths = this.getPlugin('autoColumnSize').widths;
+
+      if (autoWidths[col]) {
+        width = autoWidths[col];
+      }
+
+      return trimDropdown ? width : width + 15;
+    }
+  });
+
+  // Add additional space for autocomplete holder
+  this.htEditor.view.wt.wtTable.holder.parentNode.style['padding-right'] = getScrollbarWidth() + 2 + 'px';
+
+  if (skipOne) {
+    skipOne = false;
+  }
+
+  _this.instance._registerTimeout(setTimeout(function() {
+    _this.queryChoices(_this.TEXTAREA.value);
+  }, 0));
+};
+
+AutocompleteEditor.prototype.close = function() {
+  HandsontableEditor.prototype.close.apply(this, arguments);
+};
+AutocompleteEditor.prototype.queryChoices = function(query) {
+  this.query = query;
+
+  const source = this.cellProperties.source;
+  const hasFilter = this.cellProperties.filter;
+  const filteringCaseSensitive = this.cellProperties.filteringCaseSensitive;
+
+  if (typeof source == 'function') {
+    var _this = this;
+
+    source.call(this.cellProperties, query, function(choices) {
+      _this.updateChoicesList(choices);
     });
 
-    onBeforeKeyDownInner = function (event) {
-      var instance = this;
+  } else if (Array.isArray(source)) {
+    let choices;
 
-      if (event.keyCode == Handsontable.helper.keyCode.ARROW_UP){
-        if (instance.getSelected() && instance.getSelected()[0] == 0){
+    if (!query || hasFilter === false) {
+      choices = source;
+    } else {
+      let lowerCaseQuery = query.toLowerCase();
 
-          if(!parent.cellProperties.strict){
-            instance.deselectCell();
-          }
+      choices = source.filter(function(choice) {
 
-          parent.instance.listen();
-          parent.focus();
-          event.preventDefault();
-          event.stopImmediatePropagation();
+        if (filteringCaseSensitive) {
+          return choice.indexOf(query) != -1;
+        } else {
+          return choice.toLowerCase().indexOf(lowerCaseQuery) != -1;
         }
-      }
 
-    };
-
-    choicesListHot.addHook('beforeKeyDown', onBeforeKeyDownInner);
-
-    this.queryChoices(this.TEXTAREA.value);
-
-  };
-
-  AutocompleteEditor.prototype.close = function () {
-
-    this.$htContainer.handsontable('getInstance').removeHook('beforeKeyDown', onBeforeKeyDownInner);
-
-    Handsontable.editors.HandsontableEditor.prototype.close.apply(this, arguments);
-  };
-
-  AutocompleteEditor.prototype.queryChoices = function(query){
-
-    this.query = query;
-
-    if (typeof this.cellProperties.source == 'function'){
-      var that = this;
-
-      this.cellProperties.source(query, function(choices){
-        that.updateChoicesList(choices)
       });
+    }
 
-    } else if (Handsontable.helper.isArray(this.cellProperties.source)) {
+    this.updateChoicesList(choices);
 
-      var choices;
+  } else {
+    this.updateChoicesList([]);
+  }
 
-      if(!query || this.cellProperties.filter === false){
-        choices = this.cellProperties.source;
-      } else {
+};
 
-        var filteringCaseSensitive = this.cellProperties.filteringCaseSensitive === true;
-        var lowerCaseQuery = query.toLowerCase();
+AutocompleteEditor.prototype.updateChoicesList = function(choices) {
+  let pos = getCaretPosition(this.TEXTAREA);
+  let endPos = getSelectionEndPosition(this.TEXTAREA);
+  let sortByRelevanceSetting = this.cellProperties.sortByRelevance;
+  let filterSetting = this.cellProperties.filter;
+  let orderByRelevance = null;
+  let highlightIndex = null;
 
-        choices = this.cellProperties.source.filter(function(choice){
+  if (sortByRelevanceSetting) {
+    orderByRelevance = AutocompleteEditor.sortByRelevance(this.getValue(), choices, this.cellProperties.filteringCaseSensitive);
+  }
 
-          if (filteringCaseSensitive) {
-            return choice.indexOf(query) != -1;
-          } else {
-            return choice.toLowerCase().indexOf(lowerCaseQuery) != -1;
-          }
-
-        });
-      }
-
-      this.updateChoicesList(choices)
-
+  if (filterSetting === false) {
+    if (orderByRelevance) {
+      highlightIndex = orderByRelevance[0];
     } else {
-      this.updateChoicesList([]);
+      highlightIndex = 0;
     }
+  } else {
+    let sorted = [];
 
-  };
-
-  AutocompleteEditor.prototype.updateChoicesList = function (choices) {
-
-     this.choices = choices;
-
-    this.$htContainer.handsontable('loadData', Handsontable.helper.pivot([choices]));
-
-    if(this.cellProperties.strict === true){
-      this.highlightBestMatchingChoice();
-    }
-
-    this.focus();
-  };
-
-  AutocompleteEditor.prototype.highlightBestMatchingChoice = function () {
-    var bestMatchingChoice = this.findBestMatchingChoice();
-
-    if ( typeof bestMatchingChoice == 'undefined' && this.cellProperties.allowInvalid === false){
-      bestMatchingChoice = 0;
-    }
-
-    if(typeof bestMatchingChoice == 'undefined'){
-      this.$htContainer.handsontable('deselectCell');
-    } else {
-      this.$htContainer.handsontable('selectCell', bestMatchingChoice, 0);
-    }
-
-  };
-
-  AutocompleteEditor.prototype.findBestMatchingChoice = function(){
-    var bestMatch = {};
-    var valueLength = this.getValue().length;
-    var currentItem;
-    var indexOfValue;
-    var charsLeft;
-
-
-    for(var i = 0, len = this.choices.length; i < len; i++){
-      currentItem = this.choices[i];
-
-      if(valueLength > 0){
-        indexOfValue = currentItem.indexOf(this.getValue())
+    for (let i = 0, choicesCount = choices.length; i < choicesCount; i++) {
+      if (orderByRelevance) {
+        sorted.push(choices[orderByRelevance[i]]);
       } else {
-        indexOfValue = currentItem === this.getValue() ? 0 : -1;
+        sorted.push(choices[i]);
       }
-
-      if(indexOfValue == -1) continue;
-
-      charsLeft =  currentItem.length - indexOfValue - valueLength;
-
-      if( typeof bestMatch.indexOfValue == 'undefined'
-        || bestMatch.indexOfValue > indexOfValue
-        || ( bestMatch.indexOfValue == indexOfValue && bestMatch.charsLeft > charsLeft ) ){
-
-        bestMatch.indexOfValue = indexOfValue;
-        bestMatch.charsLeft = charsLeft;
-        bestMatch.index = i;
-
-      }
-
     }
 
+    highlightIndex = 0;
+    choices = sorted;
+  }
+  /* jshint ignore:end */
 
-    return bestMatch.index;
+  this.choices = choices;
+  this.htEditor.loadData(pivot([choices]));
+
+  this.updateDropdownHeight();
+
+  this.flipDropdownIfNeeded();
+
+  if (this.cellProperties.strict === true) {
+    this.highlightBestMatchingChoice(highlightIndex);
+  }
+
+  this.instance.listen();
+  this.TEXTAREA.focus();
+  setCaretPosition(this.TEXTAREA, pos, (pos === endPos ? void 0 : endPos));
+};
+
+AutocompleteEditor.prototype.flipDropdownIfNeeded = function() {
+  let textareaOffset = offset(this.TEXTAREA);
+  let textareaHeight = outerHeight(this.TEXTAREA);
+  let dropdownHeight = this.getDropdownHeight();
+  let trimmingContainer = getTrimmingContainer(this.instance.view.wt.wtTable.TABLE);
+  let containerOffset = {
+    row: 0,
+    col: 0
   };
 
-  AutocompleteEditor.prototype.getDropdownHeight = function(){
-    //return 10 * this.$htContainer.handsontable('getInstance').getRowHeight(0);
-    //sorry, we can't measure row height before it was rendered. Let's use fixed height for now
-    return 230;
-  };
+  if (trimmingContainer !== window) {
+    containerOffset = offset(trimmingContainer);
+  }
 
+  let spaceBelow = containerOffset.top + (trimmingContainer.scrollHeight - trimmingContainer.scrollTop);
+  let spaceAbove = containerOffset.top + trimmingContainer.scrollHeight;
+  let flipNeeded = (textareaOffset.top + textareaHeight + dropdownHeight > spaceBelow);
 
-  Handsontable.editors.AutocompleteEditor = AutocompleteEditor;
-  Handsontable.editors.registerEditor('autocomplete', AutocompleteEditor);
+  if (flipNeeded && spaceAbove > spaceBelow) {
+    this.flipDropdown(dropdownHeight);
+  } else {
+    this.unflipDropdown();
+  }
+};
 
-})(Handsontable);
+AutocompleteEditor.prototype.flipDropdown = function(dropdownHeight) {
+  let dropdownStyle = this.htEditor.rootElement.style;
+
+  dropdownStyle.position = 'absolute';
+  dropdownStyle.top = -dropdownHeight + 'px';
+
+  this.htEditor.flipped = true;
+};
+
+AutocompleteEditor.prototype.unflipDropdown = function() {
+  let dropdownStyle = this.htEditor.rootElement.style;
+
+  if (dropdownStyle.position === 'absolute') {
+    dropdownStyle.position = '';
+    dropdownStyle.top = '';
+  }
+
+  this.htEditor.flipped = void 0;
+};
+
+AutocompleteEditor.prototype.updateDropdownHeight = function() {
+  var currentDropdownWidth = this.htEditor.getColWidth(0) + getScrollbarWidth() + 2;
+  var trimDropdown = this.cellProperties.trimDropdown;
+
+  this.htEditor.updateSettings({
+    height: this.getDropdownHeight(),
+    width: trimDropdown ? void 0 : currentDropdownWidth
+  });
+
+  this.htEditor.view.wt.wtTable.alignOverlaysWithTrimmingContainer();
+};
+
+AutocompleteEditor.prototype.finishEditing = function(restoreOriginalValue) {
+  if (!restoreOriginalValue) {
+    this.instance.removeHook('beforeKeyDown', onBeforeKeyDown);
+  }
+  HandsontableEditor.prototype.finishEditing.apply(this, arguments);
+};
+
+AutocompleteEditor.prototype.highlightBestMatchingChoice = function(index) {
+  if (typeof index === 'number') {
+    this.htEditor.selectCell(index, 0);
+  } else {
+    this.htEditor.deselectCell();
+  }
+};
+
+/**
+ * Filters and sorts by relevance
+ * @param value
+ * @param choices
+ * @param caseSensitive
+ * @returns {Array} array of indexes in original choices array
+ */
+AutocompleteEditor.sortByRelevance = function(value, choices, caseSensitive) {
+  let choicesRelevance = [];
+  let currentItem;
+  let valueLength = value.length;
+  let valueIndex;
+  let charsLeft;
+  let result = [];
+  let i;
+  let choicesCount = choices.length;
+
+  if (valueLength === 0) {
+    for (i = 0; i < choicesCount; i++) {
+      result.push(i);
+    }
+    return result;
+  }
+
+  for (i = 0; i < choicesCount; i++) {
+    currentItem = stringify(choices[i]);
+
+    if (caseSensitive) {
+      valueIndex = currentItem.indexOf(value);
+    } else {
+      valueIndex = currentItem.toLowerCase().indexOf(value.toLowerCase());
+    }
+
+    if (valueIndex == -1) {
+      continue;
+    }
+    charsLeft = currentItem.length - valueIndex - valueLength;
+
+    choicesRelevance.push({
+      baseIndex: i,
+      index: valueIndex,
+      charsLeft: charsLeft,
+      value: currentItem
+    });
+  }
+
+  choicesRelevance.sort(function(a, b) {
+
+    if (b.index === -1) {
+      return -1;
+    }
+    if (a.index === -1) {
+      return 1;
+    }
+
+    if (a.index < b.index) {
+      return -1;
+    } else if (b.index < a.index) {
+      return 1;
+    } else if (a.index === b.index) {
+      if (a.charsLeft < b.charsLeft) {
+        return -1;
+      } else if (a.charsLeft > b.charsLeft) {
+        return 1;
+      } else {
+        return 0;
+      }
+    }
+  });
+
+  for (i = 0, choicesCount = choicesRelevance.length; i < choicesCount; i++) {
+    result.push(choicesRelevance[i].baseIndex);
+  }
+
+  return result;
+};
+
+AutocompleteEditor.prototype.getDropdownHeight = function() {
+  let firstRowHeight = this.htEditor.getInstance().getRowHeight(0) || 23;
+  let visibleRows = this.cellProperties.visibleRows;
+
+  return this.choices.length >= visibleRows ? visibleRows * firstRowHeight : this.choices.length * firstRowHeight + 8;
+};
+
+AutocompleteEditor.prototype.allowKeyEventPropagation = function(keyCode) {
+  let selected = {row: this.htEditor.getSelectedRange() ? this.htEditor.getSelectedRange().from.row : -1};
+  let allowed = false;
+
+  if (keyCode === KEY_CODES.ARROW_DOWN && selected.row > 0 && selected.row < this.htEditor.countRows() - 1) {
+    allowed = true;
+  }
+  if (keyCode === KEY_CODES.ARROW_UP && selected.row > -1) {
+    allowed = true;
+  }
+
+  return allowed;
+};
+
+export {AutocompleteEditor};
+
+registerEditor('autocomplete', AutocompleteEditor);

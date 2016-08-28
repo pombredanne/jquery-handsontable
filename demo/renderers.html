@@ -7,13 +7,14 @@
   <!--
   Loading Handsontable (full distribution that includes all dependencies apart from jQuery)
   -->
-  <script data-jsfiddle="common" src="../lib/jquery.min.js"></script>
-  <script data-jsfiddle="common" src="../dist/jquery.handsontable.full.js"></script>
-  <link data-jsfiddle="common" rel="stylesheet" media="screen" href="../dist/jquery.handsontable.full.css">
-  <!-- the below is only needed for DateCell (uses jQuery UI Datepicker) -->
-  <script data-jsfiddle="common" src="../lib/jquery-ui/js/jquery-ui.custom.min.js"></script>
-  <link data-jsfiddle="common" rel="stylesheet" media="screen"
-        href="../lib/jquery-ui/css/ui-bootstrap/jquery-ui.custom.css">
+  <link data-jsfiddle="common" rel="stylesheet" media="screen" href="../dist/handsontable.css">
+  <link data-jsfiddle="common" rel="stylesheet" media="screen" href="../dist/pikaday/pikaday.css">
+  <script data-jsfiddle="common" src="../dist/pikaday/pikaday.js"></script>
+  <script data-jsfiddle="common" src="../dist/moment/moment.js"></script>
+  <script data-jsfiddle="common" src="../dist/zeroclipboard/ZeroClipboard.js"></script>
+  <script data-jsfiddle="common" src="../dist/numbro/numbro.js"></script>
+  <script data-jsfiddle="common" src="../dist/numbro/languages.js"></script>
+  <script data-jsfiddle="common" src="../dist/handsontable.js"></script>
 
   <!--
   Loading demo dependencies. They are used here only to enhance the examples on this page
@@ -98,7 +99,7 @@
           <div id="example1"></div>
 
           <p>
-            <button name="dump" data-dump="#example1" title="Prints current data source to Firebug/Chrome Dev Tools">
+            <button name="dump" data-instance="hot1" data-dump="#example1" title="Prints current data source to Firebug/Chrome Dev Tools">
               Dump
               data to console
             </button>
@@ -114,43 +115,47 @@
 
           <script data-jsfiddle="example1">
             var data = [
-              {id: 1, name: "Ted", isActive: true, color: "orange", date: "2008-01-01"},
-              {id: 2, name: "John", isActive: false, color: "black", date: null},
-              {id: 3, name: "Al", isActive: true, color: "red", date: null},
-              {id: 4, name: "Ben", isActive: false, color: "blue", date: null}
-            ];
+                {id: 1, name: 'Ted', isActive: true, color: 'orange', date: '2008-01-01'},
+                {id: 2, name: 'John', isActive: false, color: 'black', date: null},
+                {id: 3, name: 'Al', isActive: true, color: 'red', date: null},
+                {id: 4, name: 'Ben', isActive: false, color: 'blue', date: null}
+              ],
+              container = document.getElementById('example1'),
+              hot1,
+              yellowRenderer,
+              greenRenderer;
 
-            var yellowRenderer = function (instance, td, row, col, prop, value, cellProperties) {
+            yellowRenderer = function(instance, td, row, col, prop, value, cellProperties) {
               Handsontable.renderers.TextRenderer.apply(this, arguments);
-              $(td).css({
-                background: 'yellow'
-              });
+              td.style.backgroundColor = 'yellow';
+
             };
 
-            var greenRenderer = function (instance, td, row, col, prop, value, cellProperties) {
+            greenRenderer = function(instance, td, row, col, prop, value, cellProperties) {
               Handsontable.renderers.TextRenderer.apply(this, arguments);
-              $(td).css({
-                background: 'green'
-              });
+              td.style.backgroundColor = 'green';
+
             };
 
-            var $container = $("#example1");
-            $container.handsontable({
+            hot1 = new Handsontable(container, {
               data: data,
               startRows: 5,
               colHeaders: true,
               minSpareRows: 1,
               columns: [
                 {data: "id", type: 'text'},
-                //'text' is default, you don't actually have to declare it
+                // 'text' is default, you don't actually have to declare it
                 {data: "name", renderer: yellowRenderer},
-                //use default 'text' cell type but overwrite its renderer with yellowRenderer
+                // use default 'text' cell type but overwrite its renderer with yellowRenderer
                 {data: "isActive", type: 'checkbox'},
-                {data: "date", type: 'date'},
+                {data: "date", type: 'date', dateFormat: 'YYYY-MM-DD'},
                 {data: "color",
                   type: 'autocomplete',
                   source: ["yellow", "red", "orange", "green", "blue", "gray", "black", "white"]
                 }
+              ],
+              cell: [
+                {row: 1, col: 0, renderer: greenRenderer}
               ],
               cells: function (row, col, prop) {
                 if (row === 0 && col === 0) {
@@ -177,32 +182,27 @@
           <p>For example writing:</p>
 
         <pre class="javascript"><code>
-          columns: [
-          {
-          type: 'text'
-          }
-          ]
+          columns: [{
+            type: 'text'
+          }]
         </code></pre>
 
           <p>Equals:</p>
 
         <pre class="javascript"><code>
-          columns: [
-          {
-          renderer: Handsontable.renderers.TextRenderer,
-          editor: Handsontable.editors.TextEditor
-          }
-          ]
+          columns: [{
+            renderer: Handsontable.renderers.TextRenderer,
+            editor: Handsontable.editors.TextEditor
+          }]
         </code></pre>
 
           This mapping is defined in file <a
-          href="https://github.com/handsontable/jquery-handsontable/blob/master/src/cellTypes.js">src/cellTypes.js</a>
+          href="https://github.com/handsontable/handsontable/blob/master/src/cellTypes.js">src/cellTypes.js</a>
         </div>
       </div>
     </div>
 
-        <div class="footer-text">Handsontable &copy; 2012-2014 Marcin Warpechowski and contributors.<br> Code and documentation
-          licensed under the The MIT License.
+        <div class="footer-text">
         </div>
       </div>
 

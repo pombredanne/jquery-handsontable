@@ -7,13 +7,16 @@
   <!--
   Loading Handsontable (full distribution that includes all dependencies apart from jQuery)
   -->
-  <script data-jsfiddle="common" src="../lib/jquery.min.js"></script>
-  <script data-jsfiddle="common" src="../dist/jquery.handsontable.full.js"></script>
-  <link data-jsfiddle="common" rel="stylesheet" media="screen" href="../dist/jquery.handsontable.full.css">
-  <!-- the below is only needed for DateCell (uses jQuery UI Datepicker) -->
-  <script data-jsfiddle="common" src="../lib/jquery-ui/js/jquery-ui.custom.min.js"></script>
-  <link data-jsfiddle="common" rel="stylesheet" media="screen"
-        href="../lib/jquery-ui/css/ui-bootstrap/jquery-ui.custom.css">
+  <script data-jsfiddle="common" src="../demo/js/jquery.min.js"></script>
+
+  <link data-jsfiddle="common" rel="stylesheet" media="screen" href="../dist/handsontable.css">
+  <link data-jsfiddle="common" rel="stylesheet" media="screen" href="../dist/pikaday/pikaday.css">
+  <script data-jsfiddle="common" src="../dist/pikaday/pikaday.js"></script>
+  <script data-jsfiddle="common" src="../dist/moment/moment.js"></script>
+  <script data-jsfiddle="common" src="../dist/zeroclipboard/ZeroClipboard.js"></script>
+  <script data-jsfiddle="common" src="../dist/numbro/numbro.js"></script>
+  <script data-jsfiddle="common" src="../dist/numbro/languages.js"></script>
+  <script data-jsfiddle="common" src="../dist/handsontable.js"></script>
 
   <!--
   Loading demo dependencies. They are used here only to enhance the examples on this page
@@ -72,7 +75,7 @@
           <div id="example1"></div>
 
           <p>
-            <button name="dump" data-dump="#example1" title="Prints current data source to Firebug/Chrome Dev Tools">
+            <button name="dump" data-dump="#example1" data-instance="hot" title="Prints current data source to Firebug/Chrome Dev Tools">
               Dump data to console
             </button>
           </p>
@@ -89,6 +92,7 @@
             <label><span>fragmentSelection</span> <select class="handsontableOption" name="fragmentSelection">
               <option value="false">false (default)</option>
               <option value="true">true</option>
+              <option value="cell">cell</option>
             </select></label>
           </p>
 
@@ -96,6 +100,20 @@
             <label><span>multiSelect:</span> <select class="handsontableOption" name="multiSelect">
               <option value="true">true (default)</option>
               <option value="false">false</option>
+            </select></label>
+          </p>
+
+          <p>
+            <label><span>wordWrap:</span> <select class="handsontableOption" name="wordWrap">
+              <option value="true">true (default)</option>
+              <option value="false">false</option>
+            </select></label>
+          </p>
+
+          <p>
+            <label><span>autoWrapRow:</span> <select class="handsontableOption" name="autoWrapRow">
+              <option value="true">true</option>
+              <option value="false" selected>false (default)</option>
             </select></label>
           </p>
         </div>
@@ -109,50 +127,53 @@
 
           <script data-jsfiddle="example1">
             var data = [
-              ["", "Maserati", "Mazda", "Mercedes", "Mini", "Mitsubishi"],
-              ["2009", 0, 2941, 4303, 354, 5814],
-              ["2010", 5, 2905, 2867, 412, 5284],
-              ["2011", 4, 2517, 4822, 552, 6127],
-              ["2012", 2, 2422, 5399, 776, 4151]
-            ];
+                ['', 'Maserati', 'Mazda', 'Mercedes-Benz', 'Mini', 'Mitsubishi'],
+                ['2009', 0, 2941, 4303, 354, 5814],
+                ['2010', 3, 2905, 2867, 412, 5284],
+                ['2011', 4, 2517, 4822, 552, 6127],
+                ['2012', 2, 2422, 5399, 776, 4151]
+              ],
+              container = document.getElementById('example1'),
+              htOptions = document.querySelectorAll('.handsontableOption'),
+              hot;
 
-            $('#example1').handsontable({
+            hot = new Handsontable(container, {
               data: data,
               minRows: 5,
               minCols: 6,
               minSpareRows: 1,
-              minSpareCols: 1,
-              autoWrapRow: true,
+              autoWrapRow: false,
               colHeaders: true,
-              contextMenu: true
+              contextMenu: true,
+              colWidths: 80
             });
 
-            var HOT = $('#example1').handsontable('getInstance');
+            for (var i = 0, len = htOptions.length; i<len; i++) {
+              Handsontable.Dom.addEvent(htOptions[i], 'change', function () {
+                var update = {};
 
-            $('.handsontableOption').change(function () {
-              var update = {};
-              switch (this.value) {
-                case 'true':
-                  update[this.name] = true;
-                  break;
+                switch (this.value) {
+                  case 'true':
+                    update[this.name] = true;
+                    break;
 
-                case 'false':
-                  update[this.name] = false;
-                  break;
+                  case 'false':
+                    update[this.name] = false;
+                    break;
 
-                default:
-                  update[this.name] = this.value;
-              }
+                  default:
+                    update[this.name] = this.value;
+                }
 
-              HOT.updateSettings(update);
-            });
+                hot.updateSettings(update);
+              });
+            }
           </script>
         </div>
       </div>
     </div>
 
-        <div class="footer-text">Handsontable &copy; 2012-2014 Marcin Warpechowski and contributors.<br> Code and documentation
-          licensed under the The MIT License.
+        <div class="footer-text">
         </div>
       </div>
 

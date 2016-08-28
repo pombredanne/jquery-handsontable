@@ -5,12 +5,16 @@
   <title>Checkbox cell type - Handsontable</title>
 
   <!--
-  Loading Handsontable (full distribution that includes all dependencies apart from jQuery)
+  Loading Handsontable (full distribution that includes all dependencies)
   -->
-  <script data-jsfiddle="common" src="../lib/jquery.min.js"></script>
-  <script data-jsfiddle="common" src="../dist/jquery.handsontable.full.js"></script>
-  <script data-jsfiddle="common" src="../lib/numeral.de-de.js"></script>
-  <link data-jsfiddle="common" rel="stylesheet" media="screen" href="../dist/jquery.handsontable.full.css">
+  <link data-jsfiddle="common" rel="stylesheet" media="screen" href="../dist/handsontable.css">
+  <link data-jsfiddle="common" rel="stylesheet" media="screen" href="../dist/pikaday/pikaday.css">
+  <script data-jsfiddle="common" src="../dist/pikaday/pikaday.js"></script>
+  <script data-jsfiddle="common" src="../dist/moment/moment.js"></script>
+  <script data-jsfiddle="common" src="../dist/zeroclipboard/ZeroClipboard.js"></script>
+  <script data-jsfiddle="common" src="../dist/numbro/numbro.js"></script>
+  <script data-jsfiddle="common" src="../dist/numbro/languages.js"></script>
+  <script data-jsfiddle="common" src="../dist/handsontable.js"></script>
 
   <!--
   Loading demo dependencies. They are used here only to enhance the examples on this page
@@ -82,7 +86,7 @@
           <div id="example1"></div>
 
           <p>
-            <button name="dump" data-dump="#example1" title="Prints current data source to Firebug/Chrome Dev Tools">
+            <button name="dump" data-dump="#example1" data-instance="hot1" title="Prints current data source to Firebug/Chrome Dev Tools">
               Dump
               data to console
             </button>
@@ -97,25 +101,28 @@
           </div>
 
           <script data-jsfiddle="example1">
-            $("#example1").handsontable({
+            var example1 = document.getElementById('example1'),
+              hot1;
+
+            hot1 = new Handsontable(example1, {
               data: getCarData(),
               startRows: 7,
               startCols: 4,
-              colHeaders: ["Car", "Year", "Available"],
+              colHeaders: ['Car', 'Year', 'Available'],
               colWidths: [120, 50, 60],
               columnSorting: true,
               columns: [
                 {
-                  data: "car"
-                  //1nd column is simple text, no special options here
+                  data: 'car'
+                  // 1nd column is simple text, no special options here
                 },
                 {
-                  data: "year",
+                  data: 'year',
                   type: 'numeric'
                 },
                 {
-                  data: "available",
-                  type: "checkbox"
+                  data: 'available',
+                  type: 'checkbox'
                 }
               ]
             });
@@ -140,7 +147,7 @@
           <div id="example2"></div>
 
           <p>
-            <button name="dump" data-dump="#example2" title="Prints current data source to Firebug/Chrome Dev Tools">
+            <button name="dump" data-dump="#example2" data-instance="hot2" title="Prints current data source to Firebug/Chrome Dev Tools">
               Dump
               data to console
             </button>
@@ -155,7 +162,8 @@
           </div>
 
           <script data-jsfiddle="example2">
-            $("#example2").handsontable({
+            var example2 = document.getElementById('example2');
+            var hot2 = new Handsontable(example2,{
               data: getCarData(),
               startRows: 7,
               startCols: 4,
@@ -184,8 +192,7 @@
       </div>
     </div>
 
-        <div class="footer-text">Handsontable &copy; 2012-2014 Marcin Warpechowski and contributors.<br> Code and documentation
-          licensed under the The MIT License.
+        <div class="footer-text">
         </div>
       </div>
 
