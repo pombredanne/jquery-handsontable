@@ -1,14 +1,13 @@
-import Handsontable from './../../browser';
 import BasePlugin from './../_base';
+import Hooks from './../../pluginHooks';
 import {arrayEach} from './../../helpers/array';
-import {CommandExecutor} from './commandExecutor';
-import {EventManager} from './../../eventManager';
-import {hasClass} from './../../helpers/dom/element';
-import {ItemsFactory} from './itemsFactory';
-import {Menu} from './menu';
+import CommandExecutor from './commandExecutor';
+import EventManager from './../../eventManager';
+import ItemsFactory from './itemsFactory';
+import Menu from './menu';
 import {registerPlugin} from './../../plugins';
 import {stopPropagation, pageX, pageY} from './../../helpers/dom/event';
-import {getWindowScrollLeft, getWindowScrollTop} from './../../helpers/dom/element';
+import {getWindowScrollLeft, getWindowScrollTop, hasClass} from './../../helpers/dom/element';
 import {
   ROW_ABOVE,
   ROW_BELOW,
@@ -22,6 +21,13 @@ import {
   ALIGNMENT,
   SEPARATOR
 } from './predefinedItems';
+
+import './contextMenu.css';
+
+Hooks.getSingleton().register('afterContextMenuDefaultOptions');
+Hooks.getSingleton().register('afterContextMenuShow');
+Hooks.getSingleton().register('afterContextMenuHide');
+Hooks.getSingleton().register('afterContextMenuExecute');
 
 /**
  * @description
@@ -44,7 +50,7 @@ import {
  * contextMenu: true
  * ...
  * // as a array
- * contextMenu: ['row_above', 'row_below', '--------', 'undo', 'redo']
+ * contextMenu: ['row_above', 'row_below', '---------', 'undo', 'redo']
  * ...
  * ```
  *
@@ -129,13 +135,22 @@ class ContextMenu extends BasePlugin {
     }
     super.enablePlugin();
 
-    this.callOnPluginsReady(() => {
+    const delayedInitialization = () => {
+      if (!this.hot) {
+        return;
+      }
+
       this.hot.runHooks('afterContextMenuDefaultOptions', predefinedItems);
 
       this.itemsFactory.setPredefinedItems(predefinedItems.items);
       let menuItems = this.itemsFactory.getItems(settings);
 
-      this.menu = new Menu(this.hot, {className: 'htContextMenu', keepInViewport: true});
+      this.menu = new Menu(this.hot, {
+        className: 'htContextMenu',
+        keepInViewport: true
+      });
+      this.hot.runHooks('beforeContextMenuSetItems', menuItems);
+
       this.menu.setMenuItems(menuItems);
 
       this.menu.addLocalHook('afterOpen', () => this.onMenuAfterOpen());
@@ -144,6 +159,14 @@ class ContextMenu extends BasePlugin {
 
       // Register all commands. Predefined and added by user or by plugins
       arrayEach(menuItems, (command) => this.commandExecutor.registerCommand(command.key, command));
+    };
+
+    this.callOnPluginsReady(() => {
+      if (this.isPluginsReady) {
+        setTimeout(delayedInitialization, 0);
+      } else {
+        delayedInitialization();
+      }
     });
   }
 
@@ -196,7 +219,7 @@ class ContextMenu extends BasePlugin {
 
     // ContextMenu is not detected HotTableEnv correctly because is injected outside hot-table
     this.menu.hotMenu.isHotTableEnv = this.hot.isHotTableEnv;
-    Handsontable.eventManager.isHotTableEnv = this.hot.isHotTableEnv;
+    // Handsontable.eventManager.isHotTableEnv = this.hot.isHotTableEnv;
   }
 
   /**
@@ -215,8 +238,8 @@ class ContextMenu extends BasePlugin {
    * You can execute all predefined commands:
    *  * `'row_above'` - Insert row above
    *  * `'row_below'` - Insert row below
-   *  * `'col_left'` - Insert column on the left
-   *  * `'col_right'` - Insert column on the right
+   *  * `'col_left'` - Insert column left
+   *  * `'col_right'` - Insert column right
    *  * `'clear_column'` - Clear selected column
    *  * `'remove_row'` - Remove row
    *  * `'remove_col'` - Remove column
@@ -257,6 +280,10 @@ class ContextMenu extends BasePlugin {
     let element = event.realTarget;
     this.close();
 
+    if (hasClass(element, 'handsontableInput')) {
+      return;
+    }
+
     event.preventDefault();
     stopPropagation(event);
 
@@ -265,6 +292,7 @@ class ContextMenu extends BasePlugin {
         return;
       }
     }
+
     this.open(event);
   }
 
@@ -304,11 +332,6 @@ ContextMenu.SEPARATOR = {
   name: SEPARATOR
 };
 
-Handsontable.hooks.register('afterContextMenuDefaultOptions');
-Handsontable.hooks.register('afterContextMenuShow');
-Handsontable.hooks.register('afterContextMenuHide');
-Handsontable.hooks.register('afterContextMenuExecute');
-
-export {ContextMenu};
-
 registerPlugin('contextMenu', ContextMenu);
+
+export default ContextMenu;

@@ -46,14 +46,14 @@
 
 .handsontable table.htCore {
   border-collapse: separate;
-  /*it must be separate, otherwise there are offset miscalculations in WebKit: http://stackoverflow.com/questions/2655987/border-collapse-differences-in-ff-and-webkit*/
-  /*this actually only changes appearance of user selection - does not make text unselectable
-  -webkit-user-select: none;
+  /* it must be separate, otherwise there are offset miscalculations in WebKit: http://stackoverflow.com/questions/2655987/border-collapse-differences-in-ff-and-webkit */
+  /* this actually only changes appearance of user selection - does not make text unselectable */
+  /* -webkit-user-select: none;
   -khtml-user-select: none;
   -moz-user-select: none;
   -o-user-select: none;
   -ms-user-select: none;
-  /*user-select: none; /*no browser supports unprefixed version*/
+  user-select: none; */ /* no browser supports unprefixed version */
   border-spacing: 0;
   margin: 0;
   border-width: 0;
@@ -90,6 +90,7 @@
   outline-width: 0;
   white-space: pre-line;
   /* preserve new line character in cell */
+  background-clip: padding-box;
 }
 
 .handsontable td.htInvalid {
@@ -115,6 +116,7 @@
 }
 
 .handsontable th:first-child,
+.handsontable th:nth-child(2),
 .handsontable td:first-of-type,
 .handsontable .htNoFrame + th,
 .handsontable .htNoFrame + td {
@@ -143,7 +145,7 @@
 }
 
 .handsontable th {
-  background-color: #EEE;
+  background-color: #f3f3f3;
   color: #222;
   text-align: center;
   font-weight: normal;
@@ -157,62 +159,32 @@
 .handsontable th.active {
   background-color: #CCC;
 }
-
 .handsontable thead th .relative {
   padding: 2px 4px;
 }
 
+/* selection */
+.handsontable tbody th.ht__highlight,
+.handsontable thead th.ht__highlight {
+  background-color: #dcdcdc;
+}
+.handsontable.ht__selection--columns thead th.ht__highlight,
+.handsontable.ht__selection--rows tbody th.ht__highlight {
+  background-color: #8eb0e7;
+  color: #000;
+}
+
+#hot-display-license-info {
+  font-size: 9px;
+  color: #323232 ;
+  padding: 5px 0 3px 0;
+  font-family: Helvetica, Arial, sans-serif;
+  text-align: left;
+}
+
 /* plugins */
 
-.handsontable .manualColumnMover {
-  position: fixed;
-  left: 0;
-  top: 0;
-  background-color: transparent;
-  width: 5px;
-  height: 25px;
-  z-index: 999;
-  cursor: move;
-}
-
-.handsontable .manualRowMover {
-  position: fixed;
-  left: -4px;
-  top: 0;
-  background-color: transparent;
-  height: 5px;
-  width: 50px;
-  z-index: 999;
-  cursor: move;
-}
-
-.handsontable .manualColumnMoverGuide,
-.handsontable .manualRowMoverGuide {
-  position: fixed;
-  left: 0;
-  top: 0;
-  background-color: #CCC;
-  width: 25px;
-  height: 25px;
-  opacity: 0.7;
-  display: none;
-}
-
-.handsontable .manualColumnMoverGuide.active,
-.handsontable .manualRowMoverGuide.active {
-  display: block;
-  z-index: 199;
-}
-
-.handsontable .manualColumnMover:hover,
-.handsontable .manualColumnMover.active,
-.handsontable .manualRowMover:hover,
-.handsontable .manualRowMover.active{
-  background-color: #88F;
-}
-
 /* row + column resizer*/
-
 .handsontable .manualColumnResizer {
   position: fixed;
   top: 0;
@@ -289,39 +261,6 @@
   right: -15px;
 }
 
-.handsontable th.beforeHiddenColumn {
-  position: relative;
-}
-
-.handsontable th.beforeHiddenColumn::after,
-.handsontable th.afterHiddenColumn::before {
-  content: '\25C0';
-  color: #bbb;
-  position: absolute;
-  right: 1px;
-  top: 2px;
-  font-size: 5pt;
-}
-
-.handsontable th.afterHiddenColumn {
-  position: relative;
-}
-
-.handsontable th.afterHiddenColumn::before {
-  left: 1px;
-  top: 2px;
-  right: auto;
-  content: '\25B6';
-}
-
-.handsontable td.afterHiddenColumn.firstVisible {
-  border-left: 1px solid #CCC;
-}
-
-.handsontable thead th.hiddenHeader {
-  display: none;
-}
-
 /* border line */
 
 .handsontable .wtBorder {
@@ -332,15 +271,72 @@
   display:none !important;
 }
 
-.handsontable td.area {
-  background: -moz-linear-gradient(top,  rgba(181,209,255,0.34) 0%, rgba(181,209,255,0.34) 100%); /* FF3.6+ */
-  background: -webkit-gradient(linear, left top, left bottom, color-stop(0%,rgba(181,209,255,0.34)), color-stop(100%,rgba(181,209,255,0.34))); /* Chrome,Safari4+ */
-  background: -webkit-linear-gradient(top,  rgba(181,209,255,0.34) 0%,rgba(181,209,255,0.34) 100%); /* Chrome10+,Safari5.1+ */
-  background: -o-linear-gradient(top,  rgba(181,209,255,0.34) 0%,rgba(181,209,255,0.34) 100%); /* Opera 11.10+ */
-  background: -ms-linear-gradient(top,  rgba(181,209,255,0.34) 0%,rgba(181,209,255,0.34) 100%); /* IE10+ */
-  background: linear-gradient(to bottom,  rgba(181,209,255,0.34) 0%,rgba(181,209,255,0.34) 100%); /* W3C */
-  filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#57b5d1ff', endColorstr='#57b5d1ff',GradientType=0 ); /* IE6-9 */
-  background-color: #fff;
+.handsontable td.area,
+.handsontable td.area-1,
+.handsontable td.area-2,
+.handsontable td.area-3,
+.handsontable td.area-4,
+.handsontable td.area-5,
+.handsontable td.area-6,
+.handsontable td.area-7 {
+  position: relative;
+}
+
+.handsontable td.area:before,
+.handsontable td.area-1:before,
+.handsontable td.area-2:before,
+.handsontable td.area-3:before,
+.handsontable td.area-4:before,
+.handsontable td.area-5:before,
+.handsontable td.area-6:before,
+.handsontable td.area-7:before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  bottom: -100%\9; /* Fix for IE9 to spread the ":before" pseudo element to 100% height of the parent element */
+  background: #005eff;
+}
+
+/* Fix for IE10 and IE11 to spread the ":before" pseudo element to 100% height of the parent element */
+@media screen and (-ms-high-contrast: active), (-ms-high-contrast: none) {
+  .handsontable td.area:before,
+  .handsontable td.area-1:before,
+  .handsontable td.area-2:before,
+  .handsontable td.area-3:before,
+  .handsontable td.area-4:before,
+  .handsontable td.area-5:before,
+  .handsontable td.area-6:before,
+  .handsontable td.area-7:before {
+    bottom: -100%;
+  }
+}
+
+.handsontable td.area:before {
+  opacity: 0.1;
+}
+.handsontable td.area-1:before {
+  opacity: 0.2;
+}
+.handsontable td.area-2:before {
+  opacity: 0.27;
+}
+.handsontable td.area-3:before {
+  opacity: 0.35;
+}
+.handsontable td.area-4:before {
+  opacity: 0.41;
+}
+.handsontable td.area-5:before {
+  opacity: 0.47;
+}
+.handsontable td.area-6:before {
+  opacity: 0.54;
+}
+.handsontable td.area-7:before {
+  opacity: 0.58;
 }
 
 /* fill handle */
@@ -367,7 +363,7 @@
   box-shadow: 0 0 0 2px #5292F7 inset;
   resize: none;
   /*below are needed to overwrite stuff added by jQuery UI Bootstrap theme*/
-  display: inline-block;
+  display: block;
   color: #000;
   border-radius: 0;
   background-color: #FFF;
@@ -480,21 +476,6 @@ CheckboxRenderer
   width: 100%;
 }
 
-/*
-Comment For Cell
-*/
-.htCommentCell{
-  position: relative;
-}
-.htCommentCell:after{
-  content: '';
-  position: absolute;
-  top: 0;
-  right: 0;
-  border-left: 6px solid transparent;
-  border-top: 6px solid red;
-}
-
 @-webkit-keyframes opacity-hide {
   from {
     opacity: 1;
@@ -543,12 +524,6 @@ Comment For Cell
 .handsontable .handsontable.ht_clone_top .wtHider {
   padding: 0 0 5px 0;
 }
-
-/* removing shadows, TODO: remove the commented code and this comment  */
-/*.handsontable .handsontable:not(.ht_master) table {*/
-  /*-webkit-box-shadow: 1px 2px 5px rgba(0, 0, 0, 0.4);*/
-  /*box-shadow: 1px 2px 5px rgba(0, 0, 0, 0.4);*/
-/*}*/
 
 /**
 * Autocomplete Editor
@@ -650,15 +625,6 @@ Cell borders
   border-left-color: #000;
 }
 
-.htCommentTextArea{
-  -moz-box-shadow: 1px 1px 2px #bbb;
-  -webkit-box-shadow: 1px 1px 2px #bbb;
-  background-color: #FFFACD;
-  border: 1px solid #999;
-  box-shadow: 1px 1px 2px #bbb;
-  font-family: 'Arial';
-}
-
 .handsontable tbody tr th:nth-last-child(2) {
   border-right: 1px solid #CCC;
 }
@@ -751,9 +717,9 @@ thead .htCollapseButton:after {
   width: 10px;
   height: 10px;
   cursor: pointer;
-  -webkit-box-shadow: 0px 0px 0px 6px rgba(238,238,238,1);
-  -moz-box-shadow: 0px 0px 0px 6px rgba(238,238,238,1);
-  box-shadow: 0px 0px 0px 6px rgba(238,238,238,1);
+  -webkit-box-shadow: 0 0 0 6px rgba(238,238,238,1);
+  -moz-box-shadow: 0 0 0 6px rgba(238,238,238,1);
+  box-shadow: 0 0 0 6px rgba(238,238,238,1);
   background: #eee;
 }
 

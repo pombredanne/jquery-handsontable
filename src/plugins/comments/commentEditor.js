@@ -1,4 +1,3 @@
-
 import {addClass} from './../../helpers/dom/element';
 
 /**
@@ -11,12 +10,15 @@ class CommentEditor {
   static get CLASS_EDITOR_CONTAINER() {
     return 'htCommentsContainer';
   }
+
   static get CLASS_EDITOR() {
     return 'htComments';
   }
+
   static get CLASS_INPUT() {
     return 'htCommentTextArea';
   }
+
   static get CLASS_CELL() {
     return 'htCommentCell';
   }
@@ -24,39 +26,77 @@ class CommentEditor {
   constructor() {
     this.editor = this.createEditor();
     this.editorStyle = this.editor.style;
-    this.editorStyle.position = 'absolute';
-    // above cell editor
-    this.editorStyle.zIndex = 100;
+
+    this.hidden = true;
+
     this.hide();
   }
 
   /**
-   * Set position of comments editor according to x, y coords.
+   * Set position of the comments editor according to the  provided x and y coordinates.
    *
    * @param {Number} x X position (in pixels).
    * @param {Number} y Y position (in pixels).
    */
   setPosition(x, y) {
-    this.editorStyle.left = x + 'px';
-    this.editorStyle.top = y + 'px';
+    this.editorStyle.left = `${x}px`;
+    this.editorStyle.top = `${y}px`;
   }
 
   /**
-   * Show comments editor
+   * Set the editor size according to the provided arguments.
+   *
+   * @param {Number} width Width in pixels.
+   * @param {Number} height Height in pixels.
+   */
+  setSize(width, height) {
+    if (width && height) {
+      const input = this.getInputElement();
+
+      input.style.width = `${width}px`;
+      input.style.height = `${height}px`;
+    }
+  }
+
+  /**
+   * Reset the editor size to its initial state.
+   */
+  resetSize() {
+    const input = this.getInputElement();
+
+    input.style.width = '';
+    input.style.height = '';
+  }
+
+  /**
+   * Set the read-only state for the comments editor.
+   *
+   * @param {Boolean} state The new read only state.
+   */
+  setReadOnlyState(state) {
+    const input = this.getInputElement();
+
+    input.readOnly = state;
+  }
+
+  /**
+   * Show the comments editor.
    */
   show() {
     this.editorStyle.display = 'block';
+    this.hidden = false;
   }
 
   /**
-   * Hide comments editor
+   * Hide the comments editor.
    */
   hide() {
     this.editorStyle.display = 'none';
+    this.hidden = true;
   }
 
   /**
-   * Checks if editor is visible
+   * Checks if the editor is visible.
    *
    * @returns {Boolean}
    */
@@ -65,7 +105,7 @@ class CommentEditor {
   }
 
   /**
-   * Set comment value
+   * Set the comment value.
    *
    * @param {String} [value] The value to use.
    */
@@ -75,7 +115,7 @@ class CommentEditor {
   }
 
   /**
-   * Get comment value
+   * Get the comment value.
    *
    * @returns {String}
    */
@@ -84,7 +124,7 @@ class CommentEditor {
   }
 
   /**
-   * Checks if comment input element is focused
+   * Checks if the comment input element is focused.
    *
    * @returns {Boolean}
    */
@@ -93,19 +133,19 @@ class CommentEditor {
   }
 
   /**
-   * Focus comments input element
+   * Focus the comments input element.
    */
   focus() {
     this.getInputElement().focus();
   }
 
   /**
-   * Create editor for comment textarea
+   * Create the `textarea` to be used as a comments editor.
    *
-   * @returns {Element}
+   * @returns {HTMLElement}
    */
   createEditor() {
-    let container = document.querySelector('.' + CommentEditor.CLASS_EDITOR_CONTAINER);
+    let container = document.querySelector(`.${CommentEditor.CLASS_EDITOR_CONTAINER}`);
     let editor;
     let textArea;
 
@@ -127,16 +167,16 @@ class CommentEditor {
   }
 
   /**
-   * Get input element
+   * Get the input element.
    *
    * @returns {HTMLElement}
    */
   getInputElement() {
-    return this.editor.querySelector('.' + CommentEditor.CLASS_INPUT);
+    return this.editor.querySelector(`.${CommentEditor.CLASS_INPUT}`);
   }
 
   /**
-   * Destroy comment editor
+   * Destroy the comments editor.
    */
   destroy() {
     this.editor.parentNode.removeChild(this.editor);
@@ -145,4 +185,4 @@ class CommentEditor {
   }
 }
 
-export {CommentEditor};
+export default CommentEditor;

@@ -1,22 +1,23 @@
 import {
-    getComputedStyle,
-    getTrimmingContainer,
-    innerWidth,
-    innerHeight,
-    offset,
-    outerHeight,
-    outerWidth,
+  getComputedStyle,
+  getTrimmingContainer,
+  innerWidth,
+  innerHeight,
+  offset,
+  outerHeight,
+  outerWidth,
 } from './../../../helpers/dom/element';
 import {stopImmediatePropagation} from './../../../helpers/dom/event';
+import {hasOwnProperty} from './../../../helpers/object';
 import {isMobileBrowser} from './../../../helpers/browser';
-import {EventManager} from './../../../eventManager';
-import {WalkontableCellCoords} from './cell/coords';
-import {WalkontableOverlay} from './overlay/_base.js';
+import EventManager from './../../../eventManager';
+import CellCoords from './cell/coords';
+import Overlay from './overlay/_base.js';
 
 /**
  *
  */
-class WalkontableBorder {
+class Border {
   /**
    * @param {Walkontable} wotInstance
    * @param {Object} settings
@@ -147,15 +148,15 @@ class WalkontableBorder {
     for (let i = 0; i < 5; i++) {
       let position = borderDivs[i];
       let div = document.createElement('div');
-      div.className = 'wtBorder ' + (this.settings.className || ''); // + borderDivs[i];
+      div.className = `wtBorder ${this.settings.className || ''}`; // + borderDivs[i];
 
       if (this.settings[position] && this.settings[position].hide) {
         div.className += ' hidden';
       }
       style = div.style;
       style.backgroundColor = (this.settings[position] && this.settings[position].color) ? this.settings[position].color : settings.border.color;
-      style.height = (this.settings[position] && this.settings[position].width) ? this.settings[position].width + 'px' : settings.border.width + 'px';
-      style.width = (this.settings[position] && this.settings[position].width) ? this.settings[position].width + 'px' : settings.border.width + 'px';
+      style.height = (this.settings[position] && this.settings[position].width) ? `${this.settings[position].width}px` : `${settings.border.width}px`;
+      style.width = (this.settings[position] && this.settings[position].width) ? `${this.settings[position].width}px` : `${settings.border.width}px`;
 
       this.main.appendChild(div);
     }
@@ -220,13 +221,13 @@ class WalkontableBorder {
 
     let hitAreaStyle = {
       position: 'absolute',
-      height: hitAreaWidth + 'px',
-      width: hitAreaWidth + 'px',
-      'border-radius': parseInt(hitAreaWidth / 1.5, 10) + 'px',
+      height: `${hitAreaWidth}px`,
+      width: `${hitAreaWidth}px`,
+      'border-radius': `${parseInt(hitAreaWidth / 1.5, 10)}px`,
     };
 
     for (let prop in hitAreaStyle) {
-      if (hitAreaStyle.hasOwnProperty(prop)) {
+      if (hasOwnProperty(hitAreaStyle, prop)) {
         this.selectionHandles.styles.bottomRightHitArea[prop] = hitAreaStyle[prop];
         this.selectionHandles.styles.topLeftHitArea[prop] = hitAreaStyle[prop];
       }
@@ -234,15 +235,15 @@ class WalkontableBorder {
 
     let handleStyle = {
       position: 'absolute',
-      height: width + 'px',
-      width: width + 'px',
-      'border-radius': parseInt(width / 1.5, 10) + 'px',
+      height: `${width}px`,
+      width: `${width}px`,
+      'border-radius': `${parseInt(width / 1.5, 10)}px`,
       background: '#F5F5FF',
       border: '1px solid #4285c8'
     };
 
     for (let prop in handleStyle) {
-      if (handleStyle.hasOwnProperty(prop)) {
+      if (hasOwnProperty(handleStyle, prop)) {
         this.selectionHandles.styles.bottomRight[prop] = handleStyle[prop];
         this.selectionHandles.styles.topLeft[prop] = handleStyle[prop];
       }
@@ -254,8 +255,10 @@ class WalkontableBorder {
   }
 
   isPartRange(row, col) {
-    if (this.wot.selections.area.cellRange) {
-      if (row != this.wot.selections.area.cellRange.to.row || col != this.wot.selections.area.cellRange.to.col) {
+    const areaSelection = this.wot.selections.createOrGetArea();
+
+    if (areaSelection.cellRange) {
+      if (row != areaSelection.cellRange.to.row || col != areaSelection.cellRange.to.col) {
         return true;
       }
     }
@@ -267,17 +270,17 @@ class WalkontableBorder {
     let handleWidth = parseInt(this.selectionHandles.styles.topLeft.width, 10);
     let hitAreaWidth = parseInt(this.selectionHandles.styles.topLeftHitArea.width, 10);
 
-    this.selectionHandles.styles.topLeft.top = parseInt(top - handleWidth, 10) + 'px';
-    this.selectionHandles.styles.topLeft.left = parseInt(left - handleWidth, 10) + 'px';
+    this.selectionHandles.styles.topLeft.top = `${parseInt(top - handleWidth, 10)}px`;
+    this.selectionHandles.styles.topLeft.left = `${parseInt(left - handleWidth, 10)}px`;
 
-    this.selectionHandles.styles.topLeftHitArea.top = parseInt(top - (hitAreaWidth / 4) * 3, 10) + 'px';
-    this.selectionHandles.styles.topLeftHitArea.left = parseInt(left - (hitAreaWidth / 4) * 3, 10) + 'px';
+    this.selectionHandles.styles.topLeftHitArea.top = `${parseInt(top - ((hitAreaWidth / 4) * 3), 10)}px`;
+    this.selectionHandles.styles.topLeftHitArea.left = `${parseInt(left - ((hitAreaWidth / 4) * 3), 10)}px`;
 
-    this.selectionHandles.styles.bottomRight.top = parseInt(top + height, 10) + 'px';
-    this.selectionHandles.styles.bottomRight.left = parseInt(left + width, 10) + 'px';
+    this.selectionHandles.styles.bottomRight.top = `${parseInt(top + height, 10)}px`;
+    this.selectionHandles.styles.bottomRight.left = `${parseInt(left + width, 10)}px`;
 
-    this.selectionHandles.styles.bottomRightHitArea.top = parseInt(top + height - hitAreaWidth / 4, 10) + 'px';
-    this.selectionHandles.styles.bottomRightHitArea.left = parseInt(left + width - hitAreaWidth / 4, 10) + 'px';
+    this.selectionHandles.styles.bottomRightHitArea.top = `${parseInt(top + height - (hitAreaWidth / 4), 10)}px`;
+    this.selectionHandles.styles.bottomRightHitArea.left = `${parseInt(left + width - (hitAreaWidth / 4), 10)}px`;
 
     if (this.settings.border.multipleSelectionHandlesVisible && this.settings.border.multipleSelectionHandlesVisible()) {
       this.selectionHandles.styles.topLeft.display = 'block';
@@ -315,29 +318,15 @@ class WalkontableBorder {
     if (this.disabled) {
       return;
     }
-    var isMultiple,
-        fromTD,
-        toTD,
-        fromOffset,
-        toOffset,
-        containerOffset,
-        top,
-        minTop,
-        left,
-        minLeft,
-        height,
-        width,
-        fromRow,
-        fromColumn,
-        toRow,
-        toColumn,
-        trimmingContainer,
-        cornerOverlappingContainer,
-        ilen;
 
-    ilen = this.wot.wtTable.getRenderedRowsCount();
+    let fromRow;
+    let toRow;
+    let fromColumn;
+    let toColumn;
 
-    for (let i = 0; i < ilen; i++) {
+    const rowsCount = this.wot.wtTable.getRenderedRowsCount();
+
+    for (let i = 0; i < rowsCount; i += 1) {
       let s = this.wot.wtTable.rowFilter.renderedToSource(i);
 
       if (s >= corners[0] && s <= corners[2]) {
@@ -346,7 +335,7 @@ class WalkontableBorder {
       }
     }
 
-    for (let i = ilen - 1; i >= 0; i--) {
+    for (let i = rowsCount - 1; i >= 0; i -= 1) {
       let s = this.wot.wtTable.rowFilter.renderedToSource(i);
 
       if (s >= corners[0] && s <= corners[2]) {
@@ -355,9 +344,9 @@ class WalkontableBorder {
       }
     }
 
-    ilen = this.wot.wtTable.getRenderedColumnsCount();
+    const columnsCount = this.wot.wtTable.getRenderedColumnsCount();
 
-    for (let i = 0; i < ilen; i++) {
+    for (let i = 0; i < columnsCount; i += 1) {
       let s = this.wot.wtTable.columnFilter.renderedToSource(i);
 
       if (s >= corners[1] && s <= corners[3]) {
@@ -366,7 +355,7 @@ class WalkontableBorder {
       }
     }
 
-    for (let i = ilen - 1; i >= 0; i--) {
+    for (let i = columnsCount - 1; i >= 0; i -= 1) {
       let s = this.wot.wtTable.columnFilter.renderedToSource(i);
 
       if (s >= corners[1] && s <= corners[3]) {
@@ -379,20 +368,47 @@ class WalkontableBorder {
 
       return;
     }
-    isMultiple = (fromRow !== toRow || fromColumn !== toColumn);
-    fromTD = this.wot.wtTable.getCell(new WalkontableCellCoords(fromRow, fromColumn));
-    toTD = isMultiple ? this.wot.wtTable.getCell(new WalkontableCellCoords(toRow, toColumn)) : fromTD;
-    fromOffset = offset(fromTD);
-    toOffset = isMultiple ? offset(toTD) : fromOffset;
-    containerOffset = offset(this.wot.wtTable.TABLE);
+    let fromTD = this.wot.wtTable.getCell(new CellCoords(fromRow, fromColumn));
+    const isMultiple = (fromRow !== toRow || fromColumn !== toColumn);
+    const toTD = isMultiple ? this.wot.wtTable.getCell(new CellCoords(toRow, toColumn)) : fromTD;
+    const fromOffset = offset(fromTD);
+    const toOffset = isMultiple ? offset(toTD) : fromOffset;
+    const containerOffset = offset(this.wot.wtTable.TABLE);
+    const minTop = fromOffset.top;
+    const minLeft = fromOffset.left;
 
-    minTop = fromOffset.top;
-    height = toOffset.top + outerHeight(toTD) - minTop;
-    minLeft = fromOffset.left;
-    width = toOffset.left + outerWidth(toTD) - minLeft;
+    let left = minLeft - containerOffset.left - 1;
+    let width = toOffset.left + outerWidth(toTD) - minLeft;
 
-    top = minTop - containerOffset.top - 1;
-    left = minLeft - containerOffset.left - 1;
+    if (this.isEntireColumnSelected(fromRow, toRow)) {
+      const modifiedValues = this.getDimensionsFromHeader('columns', fromColumn, toColumn, containerOffset);
+      let fromTH = null;
+
+      if (modifiedValues) {
+        [fromTH, left, width] = modifiedValues;
+      }
+
+      if (fromTH) {
+        fromTD = fromTH;
+      }
+    }
+
+    let top = minTop - containerOffset.top - 1;
+    let height = toOffset.top + outerHeight(toTD) - minTop;
+
+    if (this.isEntireRowSelected(fromColumn, toColumn)) {
+      const modifiedValues = this.getDimensionsFromHeader('rows', fromRow, toRow, containerOffset);
+      let fromTH = null;
+
+      if (modifiedValues) {
+        [fromTH, top, height] = modifiedValues;
+      }
+
+      if (fromTH) {
+        fromTD = fromTH;
+      }
+    }
+
     let style = getComputedStyle(fromTD);
 
     if (parseInt(style.borderTopWidth, 10) > 0) {
@@ -404,62 +420,159 @@ class WalkontableBorder {
       width = width > 0 ? width - 1 : 0;
     }
 
-    this.topStyle.top = top + 'px';
-    this.topStyle.left = left + 'px';
-    this.topStyle.width = width + 'px';
+    this.topStyle.top = `${top}px`;
+    this.topStyle.left = `${left}px`;
+    this.topStyle.width = `${width}px`;
     this.topStyle.display = 'block';
 
-    this.leftStyle.top = top + 'px';
-    this.leftStyle.left = left + 'px';
-    this.leftStyle.height = height + 'px';
+    this.leftStyle.top = `${top}px`;
+    this.leftStyle.left = `${left}px`;
+    this.leftStyle.height = `${height}px`;
     this.leftStyle.display = 'block';
 
-    let delta = Math.floor(this.settings.border.width / 2);
+    const delta = Math.floor(this.settings.border.width / 2);
 
-    this.bottomStyle.top = top + height - delta + 'px';
-    this.bottomStyle.left = left + 'px';
-    this.bottomStyle.width = width + 'px';
+    this.bottomStyle.top = `${top + height - delta}px`;
+    this.bottomStyle.left = `${left}px`;
+    this.bottomStyle.width = `${width}px`;
     this.bottomStyle.display = 'block';
 
-    this.rightStyle.top = top + 'px';
-    this.rightStyle.left = left + width - delta + 'px';
-    this.rightStyle.height = height + 1 + 'px';
+    this.rightStyle.top = `${top}px`;
+    this.rightStyle.left = `${left + width - delta}px`;
+    this.rightStyle.height = `${height + 1}px`;
     this.rightStyle.display = 'block';
 
-    if (isMobileBrowser() || (!this.hasSetting(this.settings.border.cornerVisible) || this.isPartRange(toRow, toColumn))) {
+    let cornerVisibleSetting = this.settings.border.cornerVisible;
+    cornerVisibleSetting = typeof cornerVisibleSetting === 'function' ? cornerVisibleSetting(this.settings.layerLevel) : cornerVisibleSetting;
+
+    const hookResult = this.wot.getSetting('onModifyGetCellCoords', toRow, toColumn);
+    let [checkRow, checkCol] = [toRow, toColumn];
+
+    if (hookResult && Array.isArray(hookResult)) {
+      [,, checkRow, checkCol] = hookResult;
+    }
+
+    if (isMobileBrowser() || !cornerVisibleSetting || this.isPartRange(checkRow, checkCol)) {
       this.cornerStyle.display = 'none';
+
     } else {
-      this.cornerStyle.top = top + height - 4 + 'px';
-      this.cornerStyle.left = left + width - 4 + 'px';
+      this.cornerStyle.top = `${top + height - 4}px`;
+      this.cornerStyle.left = `${left + width - 4}px`;
       this.cornerStyle.borderRightWidth = this.cornerDefaultStyle.borderWidth;
       this.cornerStyle.width = this.cornerDefaultStyle.width;
-      this.cornerStyle.display = 'block';
 
-      trimmingContainer = getTrimmingContainer(this.wot.wtTable.TABLE);
+      // Hide the fill handle, so the possible further adjustments won't force unneeded scrollbars.
+      this.cornerStyle.display = 'none';
+
+      const trimmingContainer = getTrimmingContainer(this.wot.wtTable.TABLE);
 
       if (toColumn === this.wot.getSetting('totalColumns') - 1) {
-        cornerOverlappingContainer = toTD.offsetLeft + outerWidth(toTD) >= innerWidth(trimmingContainer);
+        const cornerOverlappingContainer = toTD.offsetLeft + outerWidth(toTD) + (parseInt(this.cornerDefaultStyle.width, 10) / 2) >= innerWidth(trimmingContainer);
 
         if (cornerOverlappingContainer) {
-          this.cornerStyle.left = Math.floor(left + width - 3 - parseInt(this.cornerDefaultStyle.width) / 2) + 'px';
+          this.cornerStyle.left = `${Math.floor(left + width - 3 - (parseInt(this.cornerDefaultStyle.width, 10) / 2))}px`;
           this.cornerStyle.borderRightWidth = 0;
         }
       }
 
       if (toRow === this.wot.getSetting('totalRows') - 1) {
-        cornerOverlappingContainer = toTD.offsetTop + outerHeight(toTD) >= innerHeight(trimmingContainer);
+        const cornerOverlappingContainer = toTD.offsetTop + outerHeight(toTD) + (parseInt(this.cornerDefaultStyle.height, 10) / 2) >= innerHeight(trimmingContainer);
 
         if (cornerOverlappingContainer) {
-          this.cornerStyle.top = Math.floor(top + height - 3 - parseInt(this.cornerDefaultStyle.height) / 2) + 'px';
+          this.cornerStyle.top = `${Math.floor(top + height - 3 - (parseInt(this.cornerDefaultStyle.height, 10) / 2))}px`;
           this.cornerStyle.borderBottomWidth = 0;
         }
       }
 
+      this.cornerStyle.display = 'block';
     }
 
     if (isMobileBrowser()) {
       this.updateMultipleSelectionHandlesPosition(fromRow, fromColumn, top, left, width, height);
     }
+  }
+
+  /**
+   * Check whether an entire column of cells is selected.
+   *
+   * @private
+   * @param {Number} startRowIndex Start row index.
+   * @param {Number} endRowIndex End row index.
+   */
+  isEntireColumnSelected(startRowIndex, endRowIndex) {
+    return startRowIndex === this.wot.wtTable.getFirstRenderedRow() && endRowIndex === this.wot.wtTable.getLastRenderedRow();
+  }
+
+  /**
+   * Check whether an entire row of cells is selected.
+   *
+   * @private
+   * @param {Number} startColumnIndex Start column index.
+   * @param {Number} endColumnIndex End column index.
+   */
+  isEntireRowSelected(startColumnIndex, endColumnIndex) {
+    return startColumnIndex === this.wot.wtTable.getFirstRenderedColumn() && endColumnIndex === this.wot.wtTable.getLastRenderedColumn();
+  }
+
+  /**
+   * Get left/top index and width/height depending on the `direction` provided.
+   *
+   * @private
+   * @param {String} direction `rows` or `columns`, defines if an entire column or row is selected.
+   * @param {Number} fromIndex Start index of the selection.
+   * @param {Number} toIndex End index of the selection.
+   * @param {Number} containerOffset offset of the container.
+   * @return {Array|Boolean} Returns an array of [headerElement, left, width] or [headerElement, top, height], depending on `direction` (`false` in case of an error getting the headers).
+   */
+  getDimensionsFromHeader(direction, fromIndex, toIndex, containerOffset) {
+    const rootHotElement = this.wot.wtTable.wtRootElement.parentNode;
+    let getHeaderFn = null;
+    let dimensionFn = null;
+    let entireSelectionClassname = null;
+    let index = null;
+    let dimension = null;
+    let dimensionProperty = null;
+    let startHeader = null;
+    let endHeader = null;
+
+    switch (direction) {
+      case 'rows':
+        getHeaderFn = (...args) => this.wot.wtTable.getRowHeader(...args);
+        dimensionFn = (...args) => outerHeight(...args);
+        entireSelectionClassname = 'ht__selection--rows';
+        dimensionProperty = 'top';
+
+        break;
+
+      case 'columns':
+        getHeaderFn = (...args) => this.wot.wtTable.getColumnHeader(...args);
+        dimensionFn = (...args) => outerWidth(...args);
+        entireSelectionClassname = 'ht__selection--columns';
+        dimensionProperty = 'left';
+        break;
+      default:
+    }
+
+    if (rootHotElement.className.includes(entireSelectionClassname)) {
+      startHeader = getHeaderFn(fromIndex, 0);
+      endHeader = getHeaderFn(toIndex, 0);
+
+      if (!startHeader || !endHeader) {
+        return false;
+      }
+
+      const startHeaderOffset = offset(startHeader);
+      const endOffset = offset(endHeader);
+
+      if (startHeader && endHeader) {
+        index = startHeaderOffset[dimensionProperty] - containerOffset[dimensionProperty] - 1;
+        dimension = endOffset[dimensionProperty] + dimensionFn(endHeader) - startHeaderOffset[dimensionProperty];
+      }
+
+      return [startHeader, index, dimension];
+    }
+
+    return false;
   }
 
   /**
@@ -477,20 +590,6 @@ class WalkontableBorder {
       this.selectionHandles.styles.bottomRight.display = 'none';
     }
   }
-
-  /**
-   * @param {Function} setting
-   * @returns {*}
-   */
-  hasSetting(setting) {
-    if (typeof setting === 'function') {
-      return setting();
-    }
-
-    return !!setting;
-  }
 }
 
-export {WalkontableBorder};
-
-window.WalkontableBorder = WalkontableBorder;
+export default Border;

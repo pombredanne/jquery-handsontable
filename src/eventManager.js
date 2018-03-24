@@ -1,7 +1,14 @@
-import Handsontable from './browser';
 import {polymerWrap, closest} from './helpers/dom/element';
+import {hasOwnProperty} from './helpers/object';
 import {isWebComponentSupportedNatively} from './helpers/feature';
 import {stopImmediatePropagation as _stopImmediatePropagation} from './helpers/dom/event';
+
+/**
+ * Counter which tracks unregistered listeners (useful for detecting memory leaks).
+ *
+ * @type {Number}
+ */
+let listenersCounter = 0;
 
 /**
  * Event DOM manager for internal use in Handsontable.
@@ -36,22 +43,21 @@ class EventManager {
     function callbackProxy(event) {
       event = extendEvent(context, event);
 
-      /* jshint validthis:true */
       callback.call(this, event);
     }
     this.context.eventListeners.push({
-      element: element,
+      element,
       event: eventName,
-      callback: callback,
-      callbackProxy: callbackProxy,
+      callback,
+      callbackProxy,
     });
 
     if (window.addEventListener) {
       element.addEventListener(eventName, callbackProxy, false);
     } else {
-      element.attachEvent('on' + eventName, callbackProxy);
+      element.attachEvent(`on${eventName}`, callbackProxy);
     }
-    Handsontable.countEventManagerListeners++;
+    listenersCounter++;
 
     return () => {
       this.removeEventListener(element, eventName, callback);
@@ -74,6 +80,7 @@ class EventManager {
 
       if (tmpEvent.event == eventName && tmpEvent.element == element) {
         if (callback && callback != tmpEvent.callback) {
+          /* eslint-disable no-continue */
           continue;
         }
         this.context.eventListeners.splice(len, 1);
@@ -81,9 +88,9 @@ class EventManager {
         if (tmpEvent.element.removeEventListener) {
           tmpEvent.element.removeEventListener(tmpEvent.event, tmpEvent.callbackProxy, false);
         } else {
-          tmpEvent.element.detachEvent('on' + tmpEvent.event, tmpEvent.callbackProxy);
+          tmpEvent.element.detachEvent(`on${tmpEvent.event}`, tmpEvent.callbackProxy);
         }
-        Handsontable.countEventManagerListeners--;
+        listenersCounter--;
       }
     }
   }
@@ -164,7 +171,7 @@ class EventManager {
     if (element.dispatchEvent) {
       element.dispatchEvent(event);
     } else {
-      element.fireEvent('on' + eventName, event);
+      element.fireEvent(`on${eventName}`, event);
     }
   }
 }
@@ -193,7 +200,7 @@ function extendEvent(context, event) {
     _stopImmediatePropagation(this);
   };
 
-  if (!Handsontable.eventManager.isHotTableEnv) {
+  if (!EventManager.isHotTableEnv) {
     return event;
   }
   event = polymerWrap(event);
@@ -220,13 +227,18 @@ function extendEvent(context, event) {
   if (isWebComponentSupportedNatively()) {
     event.realTarget = event.srcElement || event.toElement;
 
-  } else if (context instanceof Handsontable.Core || context instanceof Walkontable) {
+  } else if (hasOwnProperty(context, 'hot') || context.isHotTableEnv || context.wtTable) {
     // Polymer doesn't support `event.target` property properly we must emulate it ourselves
-    if (context instanceof Handsontable.Core) {
-      fromElement = context.view ? context.view.wt.wtTable.TABLE : null;
+    if (hasOwnProperty(context, 'hot')) {
+      // Custom element
+      fromElement = context.hot ? context.hot.view.wt.wtTable.TABLE : null;
 
-    } else if (context instanceof Walkontable) {
-      // .wtHider
+    } else if (context.isHotTableEnv) {
+      // Handsontable.Core
+      fromElement = context.view.activeWt.wtTable.TABLE.parentNode.parentNode;
+
+    } else if (context.wtTable) {
+      // Walkontable
       fromElement = context.wtTable.TABLE.parentNode.parentNode;
     }
     realTarget = closest(event.target, [componentName], fromElement);
@@ -239,7 +251,7 @@ function extendEvent(context, event) {
   }
 
   Object.defineProperty(event, 'target', {
-    get: function() {
+    get() {
       return polymerWrap(target);
     },
     enumerable: true,
@@ -249,13 +261,8 @@ function extendEvent(context, event) {
   return event;
 }
 
-export {EventManager, eventManager};
+export default EventManager;
 
-// used to debug memory leaks
-Handsontable.countEventManagerListeners = 0;
-// support for older versions of Handsontable, deprecated
-Handsontable.eventManager = eventManager;
-
-function eventManager(context) {
-  return new EventManager(context);
-}
+export function getListenersCounter() {
+  return listenersCounter;
+};

@@ -1,4 +1,3 @@
-
 import {stringify} from './mixed';
 import {rangeEach} from './number';
 
@@ -10,53 +9,6 @@ import {rangeEach} from './number';
  */
 export function toUpperCaseFirst(string) {
   return string[0].toUpperCase() + string.substr(1);
-}
-
-/**
- * Checks if given prefix matches to the string.
- *
- * @param {String} string String to check.
- * @param {String} string Needle to search.
- * @returns {Boolean}
- */
-export function startsWith(string, needle) {
-  let result = true;
-
-  rangeEach(needle.length - 1, (index) => {
-    if (string.charAt(index) !== needle.charAt(index)) {
-      result = false;
-
-      return false;
-    }
-  });
-
-  return result;
-}
-
-/**
- * Checks if given postfix matches to the string.
- *
- * @param {String} string String to check.
- * @param {String} string Needle to search.
- * @returns {Boolean}
- */
-export function endsWith(string, needle) {
-  let result = true;
-  let needleLength = needle.length - 1;
-  let stringLength = string.length - 1;
-
-  rangeEach(needleLength, (index) => {
-    let stringIndex = stringLength - index;
-    let needleIndex = needleLength - index;
-
-    if (string.charAt(stringIndex) !== needle.charAt(needleIndex)) {
-      result = false;
-
-      return false;
-    }
-  });
-
-  return result;
 }
 
 /**
@@ -102,7 +54,7 @@ export function randomString() {
  * @returns {Boolean}
  */
 export function isPercentValue(value) {
-  return /^([0-9][0-9]?\%$)|(^100\%$)/.test(value);
+  return /^([0-9][0-9]?%$)|(^100%$)/.test(value);
 }
 
 /**
@@ -114,7 +66,7 @@ export function isPercentValue(value) {
  * @returns {String}
  */
 export function substitute(template, variables = {}) {
-  return (template + '').replace(/(?:\\)?\[([^\[\]]+)]/g, function(match, name) {
+  return (`${template}`).replace(/(?:\\)?\[([^[\]]+)]/g, (match, name) => {
     if (match.charAt(0) === '\\') {
       return match.substr(1, match.length - 1);
     }
@@ -123,36 +75,16 @@ export function substitute(template, variables = {}) {
   });
 }
 
+const STRIP_TAGS_REGEX = /<\/?\w+\/?>|<\w+[\s|/][^>]*>/gi;
+
 /**
- * Pad a string to a certain length with another string.
+ * Strip any HTML tag from the string.
  *
- * @param {String} string The input string.
- * @param {Number} maxLength If the value of `maxLength` is negative, less than, or equal to the length of the input string,
- *                           no padding takes place.
- * @param {String} fillString String to be fill.
- * @returns {String}
+ * @param  {String} string String to cut HTML from.
+ * @return {String}
  */
-export function padStart(string, maxLength, fillString = ' ') {
-  string = string + '';
+export function stripTags(string) {
+  string += '';
 
-  if (string.length >= maxLength) {
-    return string;
-  }
-  fillString = String(fillString);
-
-  let fillStringLength = fillString.length;
-
-  if (!fillStringLength) {
-    fillString = ' ';
-  }
-  let fillLen = maxLength - string.length;
-  let timesToRepeat = Math.ceil(fillLen / fillString.length);
-  let truncatedString = '';
-
-  rangeEach(timesToRepeat, (index) => {
-    truncatedString += fillString;
-  });
-  truncatedString = truncatedString.slice(0, fillLen);
-
-  return truncatedString + string;
-};
+  return string.replace(STRIP_TAGS_REGEX, '');
+}

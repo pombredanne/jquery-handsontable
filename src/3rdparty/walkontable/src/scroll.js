@@ -8,9 +8,9 @@ import {
 import {rangeEach, rangeEachReverse} from './../../../helpers/number';
 
 /**
- * @class WalkontableScroll
+ * @class Scroll
  */
-class WalkontableScroll {
+class Scroll {
   /**
    * @param {Walkontable} wotInstance
    */
@@ -24,7 +24,7 @@ class WalkontableScroll {
   /**
    * Scrolls viewport to a cell by minimum number of cells
    *
-   * @param {WalkontableCellCoords} coords
+   * @param {CellCoords} coords
    */
   scrollViewport(coords) {
     if (!this.wot.drawn) {
@@ -39,7 +39,7 @@ class WalkontableScroll {
       fixedRowsTop,
       fixedRowsBottom,
       fixedColumnsLeft,
-      } = this._getVariables();
+    } = this._getVariables();
 
     if (coords.row < 0 || coords.row > Math.max(totalRows - 1, 0)) {
       throw new Error(`row ${coords.row} does not exist`);
@@ -76,7 +76,7 @@ class WalkontableScroll {
       wtViewport,
       totalRows,
       fixedRowsTop,
-      } = this._getVariables();
+    } = this._getVariables();
 
     let firstVisibleRow = wtTable.getFirstVisibleRow();
 
@@ -119,7 +119,7 @@ class WalkontableScroll {
       wtTable,
       wtViewport,
       totalRows,
-      } = this._getVariables();
+    } = this._getVariables();
 
     let lastVisibleRow = wtTable.getLastVisibleRow();
 
@@ -160,7 +160,7 @@ class WalkontableScroll {
       wtViewport,
       totalColumns,
       fixedColumnsLeft,
-      } = this._getVariables();
+    } = this._getVariables();
 
     let firstVisibleColumn = wtTable.getFirstVisibleColumn();
 
@@ -201,7 +201,7 @@ class WalkontableScroll {
       wtTable,
       wtViewport,
       totalColumns,
-      } = this._getVariables();
+    } = this._getVariables();
 
     let lastVisibleColumn = wtTable.getLastVisibleColumn();
 
@@ -262,6 +262,4 @@ class WalkontableScroll {
   }
 }
 
-export {WalkontableScroll};
-
-window.WalkontableScroll = WalkontableScroll;
+export default Scroll;

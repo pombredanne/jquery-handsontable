@@ -2,12 +2,11 @@
  * Adds appropriate CSS class to table cell, based on cellProperties
  */
 import {addClass, removeClass} from './../helpers/dom/element';
-import {registerRenderer} from './../renderers';
 
 function cellDecorator(instance, TD, row, col, prop, value, cellProperties) {
   if (cellProperties.className) {
     if (TD.className) {
-      TD.className = TD.className + ' ' + cellProperties.className;
+      TD.className = `${TD.className} ${cellProperties.className}`;
     } else {
       TD.className = cellProperties.className;
     }
@@ -32,6 +31,4 @@ function cellDecorator(instance, TD, row, col, prop, value, cellProperties) {
   }
 }
 
-export {cellDecorator};
-
-registerRenderer('base', cellDecorator);
+export default cellDecorator;

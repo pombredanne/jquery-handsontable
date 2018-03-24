@@ -1,10 +1,10 @@
 import {empty, addClass, hasClass} from './../helpers/dom/element';
 import {equalsIgnoreCase} from './../helpers/string';
-import {EventManager} from './../eventManager';
-import {getRenderer, registerRenderer} from './../renderers';
+import EventManager from './../eventManager';
 import {isKey} from './../helpers/unicode';
 import {partial} from './../helpers/function';
 import {stopImmediatePropagation, isImmediatePropagationStopped} from './../helpers/dom/event';
+import {getRenderer} from './index';
 
 const isListeningKeyDownEvent = new WeakMap();
 const isCheckboxListenerAdded = new WeakMap();
@@ -99,51 +99,75 @@ function checkboxRenderer(instance, TD, row, col, prop, value, cellProperties) {
     const isKeyCode = partial(isKey, event.keyCode);
 
     if (isKeyCode(`${toggleKeys}|${switchOffKeys}`) && !isImmediatePropagationStopped(event)) {
-      eachSelectedCheckboxCell(function() {
+      eachSelectedCheckboxCell(() => {
         stopImmediatePropagation(event);
         event.preventDefault();
       });
     }
     if (isKeyCode(toggleKeys)) {
-      toggleSelected();
+      changeSelectedCheckboxesState();
     }
     if (isKeyCode(switchOffKeys)) {
-      toggleSelected(false);
+      changeSelectedCheckboxesState(true);
     }
   }
 
   /**
-   * Toggle checkbox checked property
+   * Change checkbox checked property
    *
    * @private
-   * @param {Boolean} [checked=null]
+   * @param {Boolean} [uncheckCheckbox=false]
    */
-  function toggleSelected(checked = null) {
-    eachSelectedCheckboxCell(function(checkboxes) {
-      for (let i = 0, len = checkboxes.length; i < len; i++) {
-        // Block changing checked property on toggle keys (SPACE and ENTER)
-        if (hasClass(checkboxes[i], BAD_VALUE_CLASS) && checked === null) {
+  function changeSelectedCheckboxesState(uncheckCheckbox = false) {
+    const selRange = instance.getSelectedRangeLast();
+
+    if (!selRange) {
+      return;
+    }
+
+    const {row: startRow, col: startColumn} = selRange.getTopLeftCorner();
+    const {row: endRow, col: endColumn} = selRange.getBottomRightCorner();
+    const changes = [];
+
+    for (let row = startRow; row <= endRow; row += 1) {
+      for (let col = startColumn; col <= endColumn; col += 1) {
+        const cellProperties = instance.getCellMeta(row, col);
+
+        if (cellProperties.type !== 'checkbox') {
           return;
         }
-        toggleCheckbox(checkboxes[i], checked);
-      }
-    });
-  }
 
-  /**
-   * Toggle checkbox element.
-   *
-   * @private
-   * @param {HTMLInputElement} checkbox
-   * @param {Boolean} [checked=null]
-   */
-  function toggleCheckbox(checkbox, checked = null) {
-    if (checked === null) {
-      checkbox.checked = !checkbox.checked;
-    } else {
-      checkbox.checked = checked;
+        /* eslint-disable no-continue */
+        if (cellProperties.readOnly === true) {
+          continue;
+        }
+
+        if (typeof cellProperties.checkedTemplate === 'undefined') {
+          cellProperties.checkedTemplate = true;
+        }
+        if (typeof cellProperties.uncheckedTemplate === 'undefined') {
+          cellProperties.uncheckedTemplate = false;
+        }
+
+        const dataAtCell = instance.getDataAtCell(row, col);
+
+        if (uncheckCheckbox === false) {
+          if ([cellProperties.checkedTemplate, cellProperties.checkedTemplate.toString()].includes(dataAtCell)) {
+            changes.push([row, col, cellProperties.uncheckedTemplate]);
+
+          } else if ([cellProperties.uncheckedTemplate, cellProperties.uncheckedTemplate.toString(), null, void 0].includes(dataAtCell)) {
+            changes.push([row, col, cellProperties.checkedTemplate]);
+          }
+
+        } else {
+          changes.push([row, col, cellProperties.uncheckedTemplate]);
+        }
+      }
     }
-    eventManager.fireEvent(checkbox, 'change');
+
+    if (changes.length > 0) {
+      instance.setDataAtCell(changes);
+    }
   }
 
   /**
@@ -153,7 +177,7 @@ function checkboxRenderer(instance, TD, row, col, prop, value, cellProperties) {
    * @param {Function} callback
    */
   function eachSelectedCheckboxCell(callback) {
-    const selRange = instance.getSelectedRange();
+    const selRange = instance.getSelectedRangeLast();
 
     if (!selRange) {
       return;
@@ -163,12 +187,24 @@ function checkboxRenderer(instance, TD, row, col, prop, value, cellProperties) {
 
     for (let row = topLeft.row; row <= bottomRight.row; row++) {
       for (let col = topLeft.col; col <= bottomRight.col; col++) {
-        let cell = instance.getCell(row, col);
         let cellProperties = instance.getCellMeta(row, col);
-        let checkboxes = cell.querySelectorAll('input[type=checkbox]');
 
-        if (checkboxes.length > 0 && !cellProperties.readOnly) {
-          callback(checkboxes);
+        if (cellProperties.type !== 'checkbox') {
+          return;
+        }
+
+        let cell = instance.getCell(row, col);
+
+        if (cell == null) {
+
+          callback(row, col, cellProperties);
+
+        } else {
+          let checkboxes = cell.querySelectorAll('input[type=checkbox]');
+
+          if (checkboxes.length > 0 && !cellProperties.readOnly) {
+            callback(checkboxes);
+          }
         }
       }
     }
@@ -279,7 +315,16 @@ function onChange(event, instance) {
   const cellProperties = instance.getCellMeta(row, col);
 
   if (!cellProperties.readOnly) {
-    instance.setDataAtCell(row, col, event.target.checked ? (cellProperties.checkedTemplate || true) : (cellProperties.uncheckedTemplate || false));
+    let newCheckboxValue = null;
+
+    if (event.target.checked) {
+      newCheckboxValue = cellProperties.uncheckedTemplate === void 0 ? true : cellProperties.checkedTemplate;
+
+    } else {
+      newCheckboxValue = cellProperties.uncheckedTemplate === void 0 ? false : cellProperties.uncheckedTemplate;
+    }
+
+    instance.setDataAtCell(row, col, newCheckboxValue);
   }
 }
 
@@ -294,5 +339,4 @@ function isCheckboxInput(element) {
   return element.tagName === 'INPUT' && element.getAttribute('type') === 'checkbox';
 }
 
-export {checkboxRenderer};
-registerRenderer('checkbox', checkboxRenderer);
+export default checkboxRenderer;

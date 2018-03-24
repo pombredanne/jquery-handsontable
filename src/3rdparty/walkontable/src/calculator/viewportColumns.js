@@ -1,13 +1,12 @@
-
 const privatePool = new WeakMap();
 
 /**
  * Calculates indexes of columns to render OR columns that are visible.
  * To redo the calculation, you need to create a new calculator.
  *
- * @class WalkontableViewportColumnsCalculator
+ * @class ViewportColumnsCalculator
  */
-class WalkontableViewportColumnsCalculator {
+class ViewportColumnsCalculator {
   /**
    * Default column width
    *
@@ -100,7 +99,10 @@ class WalkontableViewportColumnsCalculator {
         this.startColumn = i;
       }
 
-      if (sum >= scrollOffset && sum + columnWidth <= scrollOffset + viewportWidth) {
+      // +1 pixel for row header width compensation for horizontal scroll > 0
+      let compensatedViewportWidth = scrollOffset > 0 ? viewportWidth + 1 : viewportWidth;
+
+      if (sum >= scrollOffset && sum + columnWidth <= scrollOffset + compensatedViewportWidth) {
         if (this.startColumn == null) {
           this.startColumn = i;
         }
@@ -267,13 +269,11 @@ class WalkontableViewportColumnsCalculator {
     let width = privatePool.get(this).columnWidthFn(column);
 
     if (width === void 0) {
-      width = WalkontableViewportColumnsCalculator.DEFAULT_WIDTH;
+      width = ViewportColumnsCalculator.DEFAULT_WIDTH;
     }
 
     return width;
   }
 }
 
-export {WalkontableViewportColumnsCalculator};
-
-window.WalkontableViewportColumnsCalculator = WalkontableViewportColumnsCalculator;
+export default ViewportColumnsCalculator;

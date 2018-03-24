@@ -1,7 +1,6 @@
-import Handsontable from './../../browser';
 import BasePlugin from './../_base.js';
 import {addClass, hasClass, removeClass, outerHeight} from './../../helpers/dom/element';
-import {eventManager as eventManagerObject} from './../../eventManager';
+import EventManager from './../../eventManager';
 import {pageX, pageY} from './../../helpers/dom/event';
 import {arrayEach} from './../../helpers/array';
 import {rangeEach} from './../../helpers/number';
@@ -34,7 +33,7 @@ class ManualColumnResize extends BasePlugin {
     this.startOffset = null;
     this.handle = document.createElement('DIV');
     this.guide = document.createElement('DIV');
-    this.eventManager = eventManagerObject(this);
+    this.eventManager = new EventManager(this);
     this.pressed = null;
     this.dblclick = 0;
     this.autoresizeTimeout = null;
@@ -77,8 +76,8 @@ class ManualColumnResize extends BasePlugin {
       this.manualColumnWidths = [];
     }
 
-    Handsontable.hooks.register('beforeColumnResize');
-    Handsontable.hooks.register('afterColumnResize');
+    // Handsontable.hooks.register('beforeColumnResize');
+    // Handsontable.hooks.register('afterColumnResize');
 
     this.bindEvents();
 
@@ -138,7 +137,7 @@ class ManualColumnResize extends BasePlugin {
 
     this.currentTH = TH;
 
-    let col = this.hot.view.wt.wtTable.getCoords(TH).col; // getCoords returns WalkontableCellCoords
+    let col = this.hot.view.wt.wtTable.getCoords(TH).col; // getCoords returns CellCoords
     let headerHeight = outerHeight(this.currentTH);
 
     if (col >= 0) { // if not col header
@@ -148,7 +147,7 @@ class ManualColumnResize extends BasePlugin {
       this.selectedCols = [];
 
       if (this.hot.selection.isSelected() && this.hot.selection.selectedHeader.cols) {
-        let {from, to} = this.hot.getSelectedRange();
+        let {from, to} = this.hot.getSelectedRangeLast();
         let start = from.col;
         let end = to.col;
 
@@ -169,9 +168,9 @@ class ManualColumnResize extends BasePlugin {
 
       this.startOffset = box.left - 6;
       this.startWidth = parseInt(box.width, 10);
-      this.handle.style.top = box.top + 'px';
-      this.handle.style.left = this.startOffset + this.startWidth + 'px';
-      this.handle.style.height = headerHeight + 'px';
+      this.handle.style.top = `${box.top}px`;
+      this.handle.style.left = `${this.startOffset + this.startWidth}px`;
+      this.handle.style.height = `${headerHeight}px`;
       this.hot.rootElement.appendChild(this.handle);
     }
   }
@@ -180,7 +179,7 @@ class ManualColumnResize extends BasePlugin {
    * Refresh the resize handle position.
    */
   refreshHandlePosition() {
-    this.handle.style.left = this.startOffset + this.currentWidth + 'px';
+    this.handle.style.left = `${this.startOffset + this.currentWidth}px`;
   }
 
   /**
@@ -194,9 +193,9 @@ class ManualColumnResize extends BasePlugin {
     addClass(this.handle, 'active');
     addClass(this.guide, 'active');
 
-    this.guide.style.top = handleBottomPosition + 'px';
+    this.guide.style.top = `${handleBottomPosition}px`;
     this.guide.style.left = this.handle.style.left;
-    this.guide.style.height = (maximumVisibleElementHeight - handleHeight) + 'px';
+    this.guide.style.height = `${maximumVisibleElementHeight - handleHeight}px`;
     this.hot.rootElement.appendChild(this.guide);
   }
 
@@ -245,9 +244,9 @@ class ManualColumnResize extends BasePlugin {
     if (element.tagName != 'TABLE') {
       if (element.tagName == 'TH') {
         return element;
-      } else {
-        return this.getTHFromTargetElement(element.parentNode);
       }
+      return this.getTHFromTargetElement(element.parentNode);
+
     }
 
     return null;
@@ -432,7 +431,7 @@ class ManualColumnResize extends BasePlugin {
   /**
    * Cache the current column width.
    *
-   * @param {Number} column Column index.
+   * @param {Number} column Visual column index.
    * @param {Number} width Column width.
    * @returns {Number}
    */
@@ -453,7 +452,7 @@ class ManualColumnResize extends BasePlugin {
   /**
    * Clear cache for the current column index.
    *
-   * @param {Number} column Column index.
+   * @param {Number} column Visual column index.
    */
   clearManualSize(column) {
     column = this.hot.runHooks('modifyCol', column);
@@ -466,7 +465,7 @@ class ManualColumnResize extends BasePlugin {
    *
    * @private
    * @param {Number} width Column width.
-   * @param {Number} column Column index.
+   * @param {Number} column Visual column index.
    * @returns {Number}
    */
   onModifyColWidth(width, column) {
@@ -486,7 +485,7 @@ class ManualColumnResize extends BasePlugin {
    *
    * @private
    * @param {Number} stretchedWidth Stretched width.
-   * @param {Number} column Column index.
+   * @param {Number} column Physical column index.
    * @returns {Number}
    */
   onBeforeStretchingColumnWidth(stretchedWidth, column) {
@@ -513,6 +512,6 @@ class ManualColumnResize extends BasePlugin {
   }
 }
 
-export {ManualColumnResize};
-
 registerPlugin('manualColumnResize', ManualColumnResize);
+
+export default ManualColumnResize;

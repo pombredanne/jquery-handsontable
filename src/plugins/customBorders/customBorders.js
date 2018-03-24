@@ -1,10 +1,11 @@
-import Handsontable from './../../browser';
-import {registerPlugin} from './../../plugins';
-import {WalkontableCellRange} from './../../3rdparty/walkontable/src/cell/range';
-import {WalkontableSelection} from './../../3rdparty/walkontable/src/selection';
+import Hooks from './../../pluginHooks';
+import {hasOwnProperty} from './../../helpers/object';
+import {arrayEach} from './../../helpers/array';
+import {CellRange, Selection} from './../../3rdparty/walkontable/src';
+import * as C from './../../i18n/constants';
 
 function CustomBorders() {}
-/***
+/** *
  * Current instance (table where borders should be placed)
  */
 var instance;
@@ -44,7 +45,7 @@ var instance;
  * @plugin CustomBorders
  */
 
-/***
+/** *
  * Check if plugin should be enabled.
  */
 var checkEnable = function(customBorders) {
@@ -62,7 +63,7 @@ var checkEnable = function(customBorders) {
   return false;
 };
 
-/***
+/** *
  * Initialize plugin.
  */
 var init = function() {
@@ -74,23 +75,27 @@ var init = function() {
   }
 };
 
-/***
+/** *
  * Get index of border from the settings.
  *
  * @param {String} className
  * @returns {Number}
  */
 var getSettingIndex = function(className) {
-  for (var i = 0; i < instance.view.wt.selections.length; i++) {
-    if (instance.view.wt.selections[i].settings.className == className) {
-      return i;
-    }
-  }
+  let index = -1;
 
-  return -1;
+  arrayEach(instance.selection.highlight.borders, (selection, i) => {
+    if (selection.settings.className == className) {
+      index = i;
+
+      return false;
+    }
+  });
+
+  return index;
 };
 
-/***
+/** *
  * Insert WalkontableSelection instance into Walkontable settings.
  *
  * @param border
@@ -100,21 +105,21 @@ var insertBorderIntoSettings = function(border) {
     row: border.row,
     col: border.col
   };
-  var selection = new WalkontableSelection(border, new WalkontableCellRange(coordinates, coordinates, coordinates));
+  var selection = new Selection(border, new CellRange(coordinates, coordinates, coordinates));
   var index = getSettingIndex(border.className);
 
   if (index >= 0) {
-    instance.view.wt.selections[index] = selection;
+    instance.selection.highlight.borders[index] = selection;
   } else {
-    instance.view.wt.selections.push(selection);
+    instance.selection.highlight.borders.push(selection);
   }
 };
 
-/***
+/** *
  * Prepare borders from setting (single cell).
  *
- * @param {Number} row Row index.
- * @param {Number} col Column index.
+ * @param {Number} row Visual row index.
+ * @param {Number} col Visual column index.
  * @param borderObj
  */
 var prepareBorderFromCustomAdded = function(row, col, borderObj) {
@@ -125,7 +130,7 @@ var prepareBorderFromCustomAdded = function(row, col, borderObj) {
   insertBorderIntoSettings(border);
 };
 
-/***
+/** *
  * Prepare borders from setting (object).
  *
  * @param {Object} rowObj
@@ -141,7 +146,7 @@ var prepareBorderFromCustomAddedRange = function(rowObj) {
       if (row == range.from.row) {
         add++;
 
-        if (rowObj.hasOwnProperty('top')) {
+        if (hasOwnProperty(rowObj, 'top')) {
           border.top = rowObj.top;
         }
       }
@@ -149,7 +154,7 @@ var prepareBorderFromCustomAddedRange = function(rowObj) {
       if (row == range.to.row) {
         add++;
 
-        if (rowObj.hasOwnProperty('bottom')) {
+        if (hasOwnProperty(rowObj, 'bottom')) {
           border.bottom = rowObj.bottom;
         }
       }
@@ -157,7 +162,7 @@ var prepareBorderFromCustomAddedRange = function(rowObj) {
       if (col == range.from.col) {
         add++;
 
-        if (rowObj.hasOwnProperty('left')) {
+        if (hasOwnProperty(rowObj, 'left')) {
           border.left = rowObj.left;
         }
       }
@@ -165,7 +170,7 @@ var prepareBorderFromCustomAddedRange = function(rowObj) {
       if (col == range.to.col) {
         add++;
 
-        if (rowObj.hasOwnProperty('right')) {
+        if (hasOwnProperty(rowObj, 'right')) {
           border.right = rowObj.right;
         }
       }
@@ -178,18 +183,18 @@ var prepareBorderFromCustomAddedRange = function(rowObj) {
   }
 };
 
-/***
+/** *
  * Create separated class name for borders for each cell.
  *
- * @param {Number} row Row index.
- * @param {Number} col Column index.
+ * @param {Number} row Visual row index.
+ * @param {Number} col Visual column index.
  * @returns {String}
  */
 var createClassName = function(row, col) {
-  return 'border_row' + row + 'col' + col;
+  return `border_row${row}col${col}`;
 };
 
-/***
+/** *
  * Create default single border for each position (top/right/bottom/left).
  *
  * @returns {Object} `{{width: number, color: string}}`
@@ -201,7 +206,7 @@ var createDefaultCustomBorder = function() {
   };
 };
 
-/***
+/** *
  * Create default object for empty border.
  *
  * @returns {Object} `{{hide: boolean}}`
@@ -212,7 +217,7 @@ var createSingleEmptyBorder = function() {
   };
 };
 
-/***
+/** *
  * Create default Handsontable border object.
  *
  * @returns {Object} `{{width: number, color: string, cornerVisible: boolean}}`
@@ -225,19 +230,19 @@ var createDefaultHtBorder = function() {
   };
 };
 
-/***
+/** *
  * Prepare empty border for each cell with all custom borders hidden.
  *
- * @param {Number} row Row index.
- * @param {Number} col Column index.
+ * @param {Number} row Visual row index.
+ * @param {Number} col Visual column index.
  * @returns {Object} `{{className: *, border: *, row: *, col: *, top: {hide: boolean}, right: {hide: boolean}, bottom: {hide: boolean}, left: {hide: boolean}}}`
  */
 var createEmptyBorders = function(row, col) {
   return {
     className: createClassName(row, col),
     border: createDefaultHtBorder(),
-    row: row,
-    col: col,
+    row,
+    col,
     top: createSingleEmptyBorder(),
     right: createSingleEmptyBorder(),
     bottom: createSingleEmptyBorder(),
@@ -246,23 +251,23 @@ var createEmptyBorders = function(row, col) {
 };
 
 var extendDefaultBorder = function(defaultBorder, customBorder) {
-  if (customBorder.hasOwnProperty('border')) {
+  if (hasOwnProperty(customBorder, 'border')) {
     defaultBorder.border = customBorder.border;
   }
 
-  if (customBorder.hasOwnProperty('top')) {
+  if (hasOwnProperty(customBorder, 'top')) {
     defaultBorder.top = customBorder.top;
   }
 
-  if (customBorder.hasOwnProperty('right')) {
+  if (hasOwnProperty(customBorder, 'right')) {
     defaultBorder.right = customBorder.right;
   }
 
-  if (customBorder.hasOwnProperty('bottom')) {
+  if (hasOwnProperty(customBorder, 'bottom')) {
     defaultBorder.bottom = customBorder.bottom;
   }
 
-  if (customBorder.hasOwnProperty('left')) {
+  if (hasOwnProperty(customBorder, 'left')) {
     defaultBorder.left = customBorder.left;
   }
 
@@ -275,7 +280,7 @@ var extendDefaultBorder = function(defaultBorder, customBorder) {
  * @param borderClassName
  */
 var removeBordersFromDom = function(borderClassName) {
-  var borders = document.querySelectorAll('.' + borderClassName);
+  var borders = document.querySelectorAll(`.${borderClassName}`);
 
   for (var i = 0; i < borders.length; i++) {
     if (borders[i]) {
@@ -290,11 +295,11 @@ var removeBordersFromDom = function(borderClassName) {
   }
 };
 
-/***
+/** *
  * Remove border (triggered from context menu).
  *
- * @param {Number} row Row index.
- * @param {Number} col Column index.
+ * @param {Number} row Visual row index.
+ * @param {Number} col Visual column index.
  */
 var removeAllBorders = function(row, col) {
   var borderClassName = createClassName(row, col);
@@ -302,22 +307,21 @@ var removeAllBorders = function(row, col) {
   this.removeCellMeta(row, col, 'borders');
 };
 
-/***
+/** *
  * Set borders for each cell re. to border position
  *
- * @param row
- * @param col
+ * @param row Visual row index.
+ * @param col Visual column index.
  * @param place
  * @param remove
  */
-var setBorder = function(row, col,place, remove) {
+var setBorder = function(row, col, place, remove) {
 
   var bordersMeta = this.getCellMeta(row, col).borders;
-  /* jshint ignore:start */
+
   if (!bordersMeta || bordersMeta.border == undefined) {
     bordersMeta = createEmptyBorders(row, col);
   }
-  /* jshint ignore:end */
 
   if (remove) {
     bordersMeta[place] = createSingleEmptyBorder();
@@ -330,59 +334,62 @@ var setBorder = function(row, col,place, remove) {
   var borderClassName = createClassName(row, col);
   removeBordersFromDom(borderClassName);
   insertBorderIntoSettings(bordersMeta);
-
-  this.render();
 };
 
-/***
+/** *
  * Prepare borders based on cell and border position
  *
  * @param range
  * @param place
  * @param remove
  */
-var prepareBorder = function(range, place, remove) {
-
-  if (range.from.row == range.to.row && range.from.col == range.to.col) {
-    if (place == 'noBorders') {
-      removeAllBorders.call(this, range.from.row, range.from.col);
+var prepareBorder = function(selected, place, remove) {
+  arrayEach(selected, ({start, end}) => {
+    if (start.row == end.row && start.col == end.col) {
+      if (place == 'noBorders') {
+        removeAllBorders.call(this, start.row, start.col);
+      } else {
+        setBorder.call(this, start.row, start.col, place, remove);
+      }
     } else {
-      setBorder.call(this, range.from.row, range.from.col, place, remove);
-    }
-  } else {
-    switch (place) {
-      case 'noBorders':
-        for (var column = range.from.col; column <= range.to.col; column++) {
-          for (var row = range.from.row; row <= range.to.row; row++) {
-            removeAllBorders.call(this, row, column);
+      switch (place) {
+        case 'noBorders':
+          for (var column = start.col; column <= end.col; column++) {
+            for (var row = start.row; row <= end.row; row++) {
+              removeAllBorders.call(this, row, column);
+            }
           }
-        }
-        break;
-      case 'top':
-        for (var topCol = range.from.col; topCol <= range.to.col; topCol++) {
-          setBorder.call(this, range.from.row, topCol, place, remove);
-        }
-        break;
-      case 'right':
-        for (var rowRight = range.from.row; rowRight <= range.to.row; rowRight++) {
-          setBorder.call(this, rowRight, range.to.col, place);
-        }
-        break;
-      case 'bottom':
-        for (var bottomCol = range.from.col; bottomCol <= range.to.col; bottomCol++) {
-          setBorder.call(this, range.to.row, bottomCol, place);
-        }
-        break;
-      case 'left':
-        for (var rowLeft = range.from.row; rowLeft <= range.to.row; rowLeft++) {
-          setBorder.call(this, rowLeft, range.from.col, place);
-        }
-        break;
+          break;
+        case 'top':
+          for (var topCol = start.col; topCol <= end.col; topCol++) {
+            setBorder.call(this, start.row, topCol, place, remove);
+          }
+          break;
+        case 'right':
+          for (var rowRight = start.row; rowRight <= end.row; rowRight++) {
+            setBorder.call(this, rowRight, end.col, place);
+          }
+          break;
+        case 'bottom':
+          for (var bottomCol = start.col; bottomCol <= end.col; bottomCol++) {
+            setBorder.call(this, end.row, bottomCol, place);
+          }
+          break;
+        case 'left':
+          for (var rowLeft = start.row; rowLeft <= end.row; rowLeft++) {
+            setBorder.call(this, rowLeft, start.col, place);
+          }
+          break;
+        default:
+          break;
+      }
     }
-  }
+  });
+
+  this.render();
 };
 
-/***
+/** *
  * Check if selection has border by className
  *
  * @param hot
@@ -391,35 +398,38 @@ var prepareBorder = function(range, place, remove) {
 var checkSelectionBorders = function(hot, direction) {
   var atLeastOneHasBorder = false;
 
-  hot.getSelectedRange().forAll(function(r, c) {
-    var metaBorders = hot.getCellMeta(r, c).borders;
+  arrayEach(hot.getSelectedRange(), (range) => {
+    range.forAll((r, c) => {
+      var metaBorders = hot.getCellMeta(r, c).borders;
 
-    if (metaBorders) {
-      if (direction) {
-        if (!metaBorders[direction].hasOwnProperty('hide')) {
+      if (metaBorders) {
+        if (direction) {
+          if (!hasOwnProperty(metaBorders[direction], 'hide')) {
+            atLeastOneHasBorder = true;
+            return false; // breaks forAll
+          }
+        } else {
           atLeastOneHasBorder = true;
-          return false; //breaks forAll
+          return false; // breaks forAll
         }
-      } else {
-        atLeastOneHasBorder = true;
-        return false; //breaks forAll
       }
-    }
+    });
   });
+
   return atLeastOneHasBorder;
 };
 
-/***
+/** *
  * Mark label in contextMenu as selected
  *
  * @param label
  * @returns {string}
  */
 var markSelected = function(label) {
-  return '<span class="selected">' + String.fromCharCode(10003) + '</span>' + label; // workaround for https://github.com/handsontable/handsontable/issues/1946
+  return `<span class="selected">${String.fromCharCode(10003)}</span>${label}`; // workaround for https://github.com/handsontable/handsontable/issues/1946
 };
 
-/***
+/** *
  * Add border options to context menu
  *
  * @param defaultOptions
@@ -429,20 +439,24 @@ var addBordersOptionsToContextMenu = function(defaultOptions) {
     return;
   }
 
-  defaultOptions.items.push(Handsontable.plugins.ContextMenu.SEPARATOR);
-
+  defaultOptions.items.push({
+    name: '---------',
+  });
   defaultOptions.items.push({
     key: 'borders',
-    name: 'Borders',
-    disabled: function() {
+    name() {
+      return this.getTranslatedPhrase(C.CONTEXTMENU_ITEMS_BORDERS);
+    },
+    disabled() {
       return this.selection.selectedHeader.corner;
     },
     submenu: {
       items: [
         {
           key: 'borders:top',
-          name: function() {
-            var label = 'Top';
+          name() {
+            var label = this.getTranslatedPhrase(C.CONTEXTMENU_ITEMS_BORDERS_TOP);
+
             var hasBorder = checkSelectionBorders(this, 'top');
             if (hasBorder) {
               label = markSelected(label);
@@ -450,45 +464,45 @@ var addBordersOptionsToContextMenu = function(defaultOptions) {
 
             return label;
           },
-          callback: function() {
+          callback(key, selected) {
             var hasBorder = checkSelectionBorders(this, 'top');
-            prepareBorder.call(this, this.getSelectedRange(), 'top', hasBorder);
+            prepareBorder.call(this, selected, 'top', hasBorder);
           },
         },
         {
           key: 'borders:right',
-          name: function() {
-            var label = 'Right';
+          name() {
+            var label = this.getTranslatedPhrase(C.CONTEXTMENU_ITEMS_BORDERS_RIGHT);
             var hasBorder = checkSelectionBorders(this, 'right');
             if (hasBorder) {
               label = markSelected(label);
             }
             return label;
           },
-          callback: function() {
+          callback(key, selected) {
             var hasBorder = checkSelectionBorders(this, 'right');
-            prepareBorder.call(this, this.getSelectedRange(), 'right', hasBorder);
+            prepareBorder.call(this, selected, 'right', hasBorder);
           },
         },
         {
           key: 'borders:bottom',
-          name: function() {
-            var label = 'Bottom';
+          name() {
+            var label = this.getTranslatedPhrase(C.CONTEXTMENU_ITEMS_BORDERS_BOTTOM);
             var hasBorder = checkSelectionBorders(this, 'bottom');
             if (hasBorder) {
               label = markSelected(label);
             }
             return label;
           },
-          callback: function() {
+          callback(key, selected) {
             var hasBorder = checkSelectionBorders(this, 'bottom');
-            prepareBorder.call(this, this.getSelectedRange(), 'bottom', hasBorder);
+            prepareBorder.call(this, selected, 'bottom', hasBorder);
           },
         },
         {
           key: 'borders:left',
-          name: function() {
-            var label = 'Left';
+          name() {
+            var label = this.getTranslatedPhrase(C.CONTEXTMENU_ITEMS_BORDERS_LEFT);
             var hasBorder = checkSelectionBorders(this, 'left');
             if (hasBorder) {
               label = markSelected(label);
@@ -496,18 +510,20 @@ var addBordersOptionsToContextMenu = function(defaultOptions) {
 
             return label;
           },
-          callback: function() {
+          callback(key, selected) {
             var hasBorder = checkSelectionBorders(this, 'left');
-            prepareBorder.call(this, this.getSelectedRange(), 'left', hasBorder);
+            prepareBorder.call(this, selected, 'left', hasBorder);
           },
         },
         {
           key: 'borders:no_borders',
-          name: 'Remove border(s)',
-          callback: function() {
-            prepareBorder.call(this, this.getSelectedRange(), 'noBorders');
+          name() {
+            return this.getTranslatedPhrase(C.CONTEXTMENU_ITEMS_REMOVE_BORDERS);
           },
-          disabled: function() {
+          callback(key, selected) {
+            prepareBorder.call(this, selected, 'noBorders');
+          },
+          disabled() {
             return !checkSelectionBorders(this);
           }
         }
@@ -516,9 +532,9 @@ var addBordersOptionsToContextMenu = function(defaultOptions) {
   });
 };
 
-Handsontable.hooks.add('beforeInit', init);
-Handsontable.hooks.add('afterContextMenuDefaultOptions', addBordersOptionsToContextMenu);
-Handsontable.hooks.add('afterInit', function() {
+Hooks.getSingleton().add('beforeInit', init);
+Hooks.getSingleton().add('afterContextMenuDefaultOptions', addBordersOptionsToContextMenu);
+Hooks.getSingleton().add('afterInit', function() {
   var customBorders = this.getSettings().customBorders;
 
   if (customBorders) {
@@ -536,4 +552,4 @@ Handsontable.hooks.add('afterInit', function() {
   }
 });
 
-Handsontable.CustomBorders = CustomBorders;
+export default CustomBorders;

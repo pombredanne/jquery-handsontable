@@ -1,4 +1,4 @@
-import Handsontable from './../../browser';
+import Core from './../../core';
 import {
   addClass,
   empty,
@@ -8,13 +8,14 @@ import {
   removeClass,
 } from './../../helpers/dom/element';
 import {arrayEach, arrayFilter, arrayReduce} from './../../helpers/array';
-import {Cursor} from './cursor';
-import {EventManager} from './../../eventManager';
-import {mixin} from './../../helpers/object';
-import {debounce} from './../../helpers/function';
+import Cursor from './cursor';
+import EventManager from './../../eventManager';
+import {mixin, hasOwnProperty} from './../../helpers/object';
+import {isUndefined} from './../../helpers/mixed';
+import {debounce, isFunction} from './../../helpers/function';
 import {filterSeparators, hasSubMenu, isDisabled, isItemHidden, isSeparator, isSelectionDisabled, normalizeSelection} from './utils';
 import {KEY_CODES} from './../../helpers/unicode';
-import {localHooks} from './../../mixins/localHooks';
+import localHooks from './../../mixins/localHooks';
 import {SEPARATOR} from './predefinedItems';
 import {stopImmediatePropagation} from './../../helpers/dom/event';
 
@@ -39,6 +40,8 @@ class Menu {
     this.parentMenu = this.options.parent || null;
     this.menuItems = null;
     this.origOutsideClickDeselects = null;
+    this.keyEvent = false;
+
     this.offset = {
       above: 0,
       below: 0,
@@ -103,7 +106,7 @@ class Menu {
     let settings = {
       data: filteredItems,
       colHeaders: false,
-      colWidths: [200],
+      colWidths: [215],
       autoRowSize: false,
       readOnly: true,
       copyPaste: false,
@@ -121,12 +124,14 @@ class Menu {
         } else {
           this.openSubMenu(coords.row);
         }
-      }
+      },
+      rowHeights: (row) => (filteredItems[row].name === SEPARATOR ? 1 : 23)
     };
     this.origOutsideClickDeselects = this.hot.getSettings().outsideClickDeselects;
     this.hot.getSettings().outsideClickDeselects = false;
-    this.hotMenu = new Handsontable.Core(this.container, settings);
+    this.hotMenu = new Core(this.container, settings);
     this.hotMenu.addHook('afterInit', () => this.onAfterInit());
+    this.hotMenu.addHook('afterSelection', (...args) => this.onAfterSelection(...args));
     this.hotMenu.init();
     this.hotMenu.listen();
     this.blockMainTableCallbacks();
@@ -152,6 +157,10 @@ class Menu {
       this.hotMenu = null;
       this.hot.getSettings().outsideClickDeselects = this.origOutsideClickDeselects;
       this.runLocalHooks('afterClose');
+
+      if (this.parentMenu) {
+        this.parentMenu.hotMenu.listen();
+      }
     }
   }
 
@@ -243,18 +252,18 @@ class Menu {
    * @param {Event} [event]
    */
   executeCommand(event) {
-    if (!this.isOpened() || !this.hotMenu.getSelected()) {
+    if (!this.isOpened() || !this.hotMenu.getSelectedLast()) {
       return;
     }
-    const selectedItem = this.hotMenu.getSourceDataAtRow(this.hotMenu.getSelected()[0]);
+    const selectedItem = this.hotMenu.getSourceDataAtRow(this.hotMenu.getSelectedLast()[0]);
 
     this.runLocalHooks('select', selectedItem, event);
 
     if (selectedItem.isCommand === false || selectedItem.name === SEPARATOR) {
       return;
     }
-    const selRange = this.hot.getSelectedRange();
-    const normalizedSelection = selRange ? normalizeSelection(selRange) : {};
+    const selRanges = this.hot.getSelectedRange();
+    const normalizedSelection = selRanges ? normalizeSelection(selRanges) : [];
     let autoClose = true;
 
     // Don't close context menu if item is disabled or it has submenu
@@ -315,7 +324,7 @@ class Menu {
     if (this.isSubMenu()) {
       top = cursor.top + cursor.cellHeight - this.container.offsetHeight + 3;
     }
-    this.container.style.top = top + 'px';
+    this.container.style.top = `${top}px`;
   }
 
   /**
@@ -329,7 +338,7 @@ class Menu {
     if (this.isSubMenu()) {
       top = cursor.top - 1;
     }
-    this.container.style.top = top + 'px';
+    this.container.style.top = `${top}px`;
   }
 
   /**
@@ -346,7 +355,7 @@ class Menu {
       left = this.offset.right + 1 + cursor.left;
     }
 
-    this.container.style.left = left + 'px';
+    this.container.style.left = `${left}px`;
   }
 
   /**
@@ -357,7 +366,7 @@ class Menu {
   setPositionOnLeftOfCursor(cursor) {
     let left = this.offset.left + cursor.left - this.container.offsetWidth + getScrollbarWidth() + 4;
 
-    this.container.style.left = left + 'px';
+    this.container.style.left = `${left}px`;
   }
 
   /**
@@ -436,18 +445,10 @@ class Menu {
     let item = hot.getSourceDataAtRow(row);
     let wrapper = document.createElement('div');
 
-    let isSubMenu = (item) => {
-      return item.hasOwnProperty('submenu');
-    };
-    let itemIsSeparator = (item) => {
-      return new RegExp(SEPARATOR, 'i').test(item.name);
-    };
-    let itemIsDisabled = (item) => {
-      return item.disabled === true || (typeof item.disabled == 'function' && item.disabled.call(this.hot) === true);
-    };
-    let itemIsSelectionDisabled = (item) => {
-      return item.disableSelection;
-    };
+    let isSubMenu = (item) => hasOwnProperty(item, 'submenu');
+    let itemIsSeparator = (item) => new RegExp(SEPARATOR, 'i').test(item.name);
+    let itemIsDisabled = (item) => item.disabled === true || (typeof item.disabled == 'function' && item.disabled.call(this.hot) === true);
+    let itemIsSelectionDisabled = (item) => item.disableSelection;
 
     if (typeof value === 'function') {
       value = value.call(this.hot);
@@ -502,20 +503,33 @@ class Menu {
    * @returns {HTMLElement}
    */
   createContainer(name = null) {
-    if (name) {
-      name = name.replace(/ /g, '_');
-      name = this.options.className + 'Sub_' + name;
-    }
     let container;
 
     if (name) {
-      container = document.querySelector('.' + this.options.className + '.' + name);
+      if (isFunction(name)) {
+        name = name.call(this.hot);
+
+        if (name === null || isUndefined(name)) {
+          name = '';
+
+        } else {
+          name = name.toString();
+        }
+      }
+
+      name = name.replace(/[^A-z0-9]/g, '_');
+      name = `${this.options.className}Sub_${name}`;
+
+      container = document.querySelector(`.${this.options.className}.${name}`);
+
     } else {
-      container = document.querySelector('.' + this.options.className);
+      container = document.querySelector(`.${this.options.className}`);
     }
+
     if (!container) {
       container = document.createElement('div');
-      addClass(container, 'htMenu ' + this.options.className);
+
+      addClass(container, `htMenu ${this.options.className}`);
 
       if (name) {
         addClass(container, name);
@@ -553,8 +567,9 @@ class Menu {
    * @param {Event} event
    */
   onBeforeKeyDown(event) {
-    let selection = this.hotMenu.getSelected();
+    let selection = this.hotMenu.getSelectedLast();
     let stopEvent = false;
+    this.keyEvent = true;
 
     switch (event.keyCode) {
       case KEY_CODES.ESCAPE:
@@ -613,11 +628,15 @@ class Menu {
           stopEvent = true;
         }
         break;
+      default:
+        break;
     }
     if (stopEvent) {
       event.preventDefault();
       stopImmediatePropagation(event);
     }
+
+    this.keyEvent = false;
   }
 
   /**
@@ -631,12 +650,27 @@ class Menu {
     const holderStyle = this.hotMenu.view.wt.wtTable.holder.style;
     let currentHiderWidth = parseInt(hiderStyle.width, 10);
 
-    let realHeight = arrayReduce(data, (accumulator, value) => {
-      return accumulator + (value.name === SEPARATOR ? 1 : 26);
-    }, 0);
+    let realHeight = arrayReduce(data, (accumulator, value) => accumulator + (value.name === SEPARATOR ? 1 : 26), 0);
 
-    holderStyle.width = currentHiderWidth + 22 + 'px';
-    holderStyle.height = realHeight + 4 + 'px';
+    holderStyle.width = `${currentHiderWidth + 22}px`;
+    holderStyle.height = `${realHeight + 4}px`;
+    hiderStyle.height = holderStyle.height;
+  }
+
+  /**
+   * On after selection listener.
+   *
+   * @param {Number} r Selection start row index.
+   * @param {Number} c Selection start column index.
+   * @param {Number} r2 Selection end row index.
+   * @param {Number} c2 Selection end column index.
+   * @param {Object} preventScrolling Object with `value` property where its value change will be observed.
+   * @param {Number} selectionLayerLevel The number which indicates what selection layer is currently modified.
+   */
+  onAfterSelection(r, c, r2, c2, preventScrolling) {
+    if (this.keyEvent === false) {
+      preventScrolling.value = true;
+    }
   }
 
   /**
@@ -666,4 +700,4 @@ class Menu {
 
 mixin(Menu, localHooks);
 
-export {Menu};
+export default Menu;

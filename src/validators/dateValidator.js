@@ -1,7 +1,6 @@
-import Handsontable from './../browser';
 import moment from 'moment';
 import {getNormalizedDate} from '../helpers/date';
-import {getEditor} from './../editors';
+import {getEditorInstance} from '../editors';
 
 /**
  * Date cell validator
@@ -12,14 +11,14 @@ import {getEditor} from './../editors';
  * @param {*} value - Value of edited cell
  * @param {Function} callback - Callback called with validation result
  */
-Handsontable.DateValidator = function(value, callback) {
+export default function dateValidator(value, callback) {
   let valid = true;
-  let dateEditor = getEditor('date', this.instance);
+  const dateEditor = getEditorInstance('date', this.instance);
 
   if (value == null) {
     value = '';
   }
-  let isValidDate = moment(new Date(value)).isValid();
+  let isValidDate = moment(new Date(value)).isValid() || moment(value, dateEditor.defaultDateFormat).isValid();
   // is it in the specified format
   let isValidFormat = moment(value, this.dateFormat || dateEditor.defaultDateFormat, true).isValid();
 
@@ -37,8 +36,10 @@ Handsontable.DateValidator = function(value, callback) {
   if (isValidDate && !isValidFormat) {
     if (this.correctFormat === true) { // if format correction is enabled
       let correctedValue = correctFormat(value, this.dateFormat);
+      let row = this.instance.runHooks('unmodifyRow', this.row);
+      let column = this.instance.runHooks('unmodifyCol', this.col);
 
-      this.instance.setDataAtCell(this.row, this.col, correctedValue, 'dateValidator');
+      this.instance.setDataAtCell(row, column, correctedValue, 'dateValidator');
       valid = true;
     } else {
       valid = false;
@@ -55,22 +56,20 @@ Handsontable.DateValidator = function(value, callback) {
  * @param {String} dateFormat
  * @returns {String}
  */
-let correctFormat = function correctFormat(value, dateFormat) {
-  let date = moment(getNormalizedDate(value));
-  let year = date.format('YYYY');
-  let yearNow = moment().format('YYYY');
+export function correctFormat(value, dateFormat) {
+  let dateFromDate = moment(getNormalizedDate(value));
+  let dateFromMoment = moment(value, dateFormat);
+  let isAlphanumeric = value.search(/[A-z]/g) > -1;
+  let date;
 
-  // Firefox and IE counting 2-digits year from 1900 rest from current age.
-  if (year.substr(0, 2) !== yearNow.substr(0, 2)) {
-    if (!value.match(new RegExp(year))) {
-      date.year(year.replace(year.substr(0, 2), yearNow.substr(0, 2)));
-    }
+  if ((dateFromDate.isValid() && dateFromDate.format('x') === dateFromMoment.format('x')) ||
+      !dateFromMoment.isValid() ||
+      isAlphanumeric) {
+    date = dateFromDate;
 
-  } else if (year.length > 4) {
-    // Ugly fix for moment bug which can not format 5-digits year using YYYY
-    date.year((date.year() + '').substr(0, 4));
+  } else {
+    date = dateFromMoment;
   }
 
   return date.format(dateFormat);
 };
-

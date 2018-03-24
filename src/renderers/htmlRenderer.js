@@ -1,5 +1,5 @@
 import {fastInnerHTML} from './../helpers/dom/element';
-import {getRenderer, registerRenderer} from './../renderers';
+import {getRenderer} from './index';
 
 /**
  * @private
@@ -22,6 +22,4 @@ function htmlRenderer(instance, TD, row, col, prop, value, cellProperties) {
   fastInnerHTML(TD, value);
 }
 
-export {htmlRenderer};
-
-registerRenderer('html', htmlRenderer);
+export default htmlRenderer;
